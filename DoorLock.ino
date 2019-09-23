@@ -15,7 +15,7 @@
 #define IR_ENABLED
 //#define LCD_ENABLED
 #if !defined(TEST_SERVO) && !defined(TEST_SERVO_LINEAR) // only define BUTTON_ENABLED only if TEST_SERVO_LINEAR is not defined so as not to interrupt the tests.
-//#define BUTTON_ENABLED
+#define BUTTON_ENABLED
 #endif
 #define SERVO_ENABLED
 #define SERVO_LINEAR_ENABLED
@@ -104,12 +104,12 @@ const uint8_t PIN_BLE_RXD                           = 10;
 const uint8_t PIN_BLE_TXD                           = 11;
 #endif
 
+#define PRESSED_COOLDOWN_MS 5000
+unsigned long pressedCooldownLastTime;
+bool buttonCooldown = false;
 #ifdef BUTTON_ENABLED
   #define BUTTON_MS           100
-  #define PRESSED_COOLDOWN_MS 5000
   unsigned long buttonLastTime;
-  unsigned long pressedCooldownLastTime;
-  bool buttonCooldown = false;
 #endif
 
 #ifdef TEST_SEQUENCE
@@ -265,12 +265,10 @@ void soundLoop() {
 }
 #endif
 
-#ifdef BUTTON_ENABLED
 void startButtonCooldown() {
   buttonCooldown = true;
   pressedCooldownLastTime = currTime;
 }
-#endif
 
 /**
  * Processes the lock/unlock state. This will start a sequence to lock/unlock (processed by other loop functions).
@@ -289,18 +287,14 @@ void processLockIntent(bool intent) {
 
   if (lock == HIGH && intentState != LOCKED) {
     Serial.println(F("LOCK"));
-#ifdef BUTTON_ENABLED
     startButtonCooldown();
-#endif
     intentState = LOCKED;
     nextSequenceStage = SEQUENCE_INIT;
     nextSequenceTimeStart = currTime; // interrupt
   }
   else if (unlock == HIGH && intentState != UNLOCKED) {
     Serial.println(F("UNLOCK"));
-#ifdef BUTTON_ENABLED
     startButtonCooldown();
-#endif
     intentState = UNLOCKED;
     nextSequenceStage = SEQUENCE_INIT;
     nextSequenceTimeStart = currTime; // interrupt
