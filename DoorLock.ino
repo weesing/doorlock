@@ -137,7 +137,7 @@ bool buttonCooldown = false;
 
 #ifdef SERVO_LINEAR_ENABLED
   // Linear Servo
-  #define SERVO_LINEAR_ENGAGED_DEG            65
+  #define SERVO_LINEAR_ENGAGED_DEG            68
   #define SERVO_LINEAR_DISENGAGED_DEG         32 //25
   #define SERVO_LINEAR_STEP                   2
   #define SERVO_LINEAR_MS                     10
