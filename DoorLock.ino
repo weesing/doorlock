@@ -12,7 +12,7 @@
 
 #define RING_ENABLED
 //#define BUZZER_ENABLED
-#define IR_ENABLED
+//#define IR_ENABLED
 //#define LCD_ENABLED
 #if !defined(TEST_SERVO) && !defined(TEST_SERVO_LINEAR) // only define BUTTON_ENABLED only if TEST_SERVO_LINEAR is not defined so as not to interrupt the tests.
 #define BUTTON_ENABLED
