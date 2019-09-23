@@ -91,7 +91,7 @@ uint8_t intentState = UNKNOWN;
 #define PIN_RING_LED          6
 #endif
 #define PIN_SERVO_LINEAR1     4
-#define PIN_TILT              5
+#define PIN_TILT              13
 #define PIN_LOCK_BUTTON       3
 #ifdef BUZZER_ENABLED
 #define PIN_BUZZER            7
@@ -105,8 +105,8 @@ const uint8_t PIN_BLE_TXD                           = 11;
 #endif
 
 #ifdef BUTTON_ENABLED
-  #define BUTTON_MS           0
-  #define PRESSED_COOLDOWN_MS 500
+  #define BUTTON_MS           100
+  #define PRESSED_COOLDOWN_MS 5000
   unsigned long buttonLastTime;
   unsigned long pressedCooldownLastTime;
   bool buttonCooldown = false;
@@ -121,7 +121,7 @@ const uint8_t PIN_BLE_TXD                           = 11;
 #ifdef SERVO_ENABLED
   // Main Arm Servo
   #define SERVO_LOCKED_DEG    30
-  #define SERVO_UNLOCKED_DEG  135
+  #define SERVO_UNLOCKED_DEG  155
   #define SERVO_STEP          2
   #define SERVO_MS            10
   Servo servoArm1;
@@ -137,7 +137,7 @@ const uint8_t PIN_BLE_TXD                           = 11;
 
 #ifdef SERVO_LINEAR_ENABLED
   // Linear Servo
-  #define SERVO_LINEAR_ENGAGED_DEG            55
+  #define SERVO_LINEAR_ENGAGED_DEG            65
   #define SERVO_LINEAR_DISENGAGED_DEG         32 //25
   #define SERVO_LINEAR_STEP                   2
   #define SERVO_LINEAR_MS                     10
@@ -182,7 +182,7 @@ int reconcileCertainty = 0;
   #define RING_MS                         200
   #define RING_STEP                       50
   #define RING_BRIGHTNESS_LOW             0
-  #define RING_BRIGHTNESS_SLEEP           5
+  #define RING_BRIGHTNESS_SLEEP           0
   #define RING_PULSE_HIGH                 30
   #define RING_PULSE_LOW                  5
   #define RING_BRIGHTNESS_HIGH            255
@@ -219,6 +219,9 @@ int reconcileCertainty = 0;
     
   byte readCard[4];     // Stores scanned ID read from RFID Module
   byte masterCard[4];   // Stores master card's ID read from EEPROM
+  
+  const uint8_t ZEROS[] = {0x0, 0x0, 0x0, 0x0};
+  const uint8_t ONES[] = {0xFF, 0xFF, 0xFF, 0xFF};
 #endif
 
 #ifdef BLE_ENABLED
@@ -276,6 +279,11 @@ void startButtonCooldown() {
  * int intent - Set to true if we want to lock. Set to false if we want to unlock.
  */
 void processLockIntent(bool intent) {  
+
+  if (currTime - pressedCooldownLastTime <= PRESSED_COOLDOWN_MS) {
+    return;
+  }
+  
   int lock = intent ? HIGH : LOW;
   int unlock = intent ? LOW : HIGH;
 
@@ -487,10 +495,11 @@ void irLoop() {
     return;
   }
   irLastTime = currTime;
-
   if (irrecv1.decode(&irResults1)) {
     unsigned long irValue = irResults1.value;
     irrecv1.resume();
+    Serial.print(F("R1 received signal - "));
+    Serial.println(irValue, HEX);
     if (irValue == 0xFFFFFFFF) {
       return;
     }
@@ -514,14 +523,6 @@ void irLoop() {
 #endif
 
 #ifdef RING_ENABLED
-void ringLoop() {
-  if (currTime - ringLastTime < RING_MS) {
-    return;
-  }
-  ringLastTime = currTime;
-
-  processRing();
-}
 
 void processRing() {
   
@@ -560,6 +561,15 @@ void processRing() {
   }
 }
 
+void ringLoop() {
+  if (currTime - ringLastTime < RING_MS) {
+    return;
+  }
+  ringLastTime = currTime;
+
+  processRing();
+}
+
 void lockRing() {
   ringCurrColor = RING_LOCK_COLOR;
   ringBrightnessCurr = RING_BRIGHTNESS_LOW;
@@ -578,6 +588,66 @@ void sleepRing() {
   ringBrightnessTarget = RING_BRIGHTNESS_SLEEP;
 }
 #endif
+
+#define PIN_TILT_OUT  5
+void _reconcileState(bool force=false) {
+  int tilt = digitalRead(PIN_TILT);
+//  Serial.println(tilt);
+  if (tilt == HIGH) {
+//    Serial.print("TILT HIGH vs ");
+//    Serial.println(currState);
+    if (currState != LOCKED) {
+      if (reconcileCertainty < RECONCILE_CERTAINTY && !force) {
+        ++reconcileCertainty;
+        return;
+      }
+      Serial.print("LOCK Reconcile Certainty: ");
+      Serial.println(reconcileCertainty);
+      reconcileCertainty = 0;
+      Serial.print("LOCK Reconcile Certainty (AFTER): ");
+      Serial.println(reconcileCertainty);
+      Serial.println(F("************** LOCKED! **************"));
+      currState = LOCKED;
+#ifdef RING_ENABLED
+      lockRing();
+#endif
+#ifdef BUZZER_ENABLED
+      lockSound();
+#endif
+    }
+    else {
+      // reset in case of failed attempt
+      reconcileCertainty = 0;
+    }
+  }
+  else { // tilt == LOW
+//    Serial.print("TILT LOW vs ");
+//    Serial.println(currState);
+    if (currState != UNLOCKED) {
+      if (reconcileCertainty < RECONCILE_CERTAINTY && !force) {
+        ++reconcileCertainty;
+        return;
+      }
+      Serial.print("UNLOCK Reconcile Certainty (BEFORE): ");
+      Serial.println(reconcileCertainty);
+      reconcileCertainty = 0;
+      Serial.println(F("************** UNLOCKED **************"));
+      currState = UNLOCKED;
+#ifdef RING_ENABLED
+      unlockRing();
+#endif
+#ifdef BUZZER_ENABLED
+      unlockSound();
+#endif
+    }
+    else {
+      // reset in case of failed attempt
+      reconcileCertainty = 0;
+    }
+  }
+  
+  digitalWrite(PIN_TILT_OUT, LOW);
+}
 
 void executeSequence() { 
   if (nextSequenceStage == SEQUENCE_IDLE) {
@@ -678,6 +748,9 @@ void executeSequence() {
 #endif
 
       nextSequenceStage = SEQUENCE_END;
+
+      //Force a reconcile
+//      _reconcileState(true);
       break;
     }
     case SEQUENCE_END: {
@@ -717,49 +790,7 @@ void reconcileCurrState () {
     return;
   }
 
-  int tilt = digitalRead(PIN_TILT);
-  if (tilt == HIGH) {
-    if (currState != LOCKED) {
-      if (reconcileCertainty < RECONCILE_CERTAINTY) {
-        ++reconcileCertainty;
-        return;
-      }
-      reconcileCertainty = 0;
-      Serial.println(F("************** LOCKED! **************"));
-      currState = LOCKED;
-#ifdef RING_ENABLED
-      lockRing();
-#endif
-#ifdef BUZZER_ENABLED
-      lockSound();
-#endif
-    }
-    else {
-      // reset in case of failed attempt
-      reconcileCertainty = 0;
-    }
-  }
-  else { // tilt == LOW
-    if (currState != UNLOCKED) {
-      if (reconcileCertainty < RECONCILE_CERTAINTY) {
-        ++reconcileCertainty;
-        return;
-      }
-      reconcileCertainty = 0;
-      Serial.println(F("************** UNLOCKED **************"));
-      currState = UNLOCKED;
-#ifdef RING_ENABLED
-      unlockRing();
-#endif
-#ifdef BUZZER_ENABLED
-      unlockSound();
-#endif
-    }
-    else {
-      // reset in case of failed attempt
-      reconcileCertainty = 0;
-    }
-  }
+  _reconcileState();
 }
 
 #ifdef LCD_ENABLED
@@ -851,10 +882,13 @@ void readCardFromEEPROM( uint8_t address, byte* dst) {
 }
 
 bool isMaster( byte test[] ) {
-  return checkTwo(test, masterCard);
+  return checkTwo(test, masterCard) && !checkTwo(test, ZEROS) && !checkTwo(test, ONES);
 }
 
 bool isSlave( byte test[] ) {
+  if (checkTwo(test, ZEROS) || checkTwo(test, ONES)) {
+    return false;
+  }
   for (uint8_t slotIndex = 0; slotIndex < RFID_EEPROM_SLAVE_CARD_SLOTS; ++slotIndex) {
     byte thisSlave[4];
     for(uint8_t i = 0; i < 4; ++i) {
@@ -1042,6 +1076,8 @@ void rfidLoop() {
           registerSlaveCardTimeout = currTime + RFID_SLAVE_CARD_REGISTRATION_TIMEOUT;
         }
         else if (isSlave(readCard)) {
+          Serial.print(F("This is a slave? "));
+          printBytes(readCard);
           if (currState == LOCKED) {
             Serial.println(F("RFID authorized, processing UNLOCK"));
             processLockIntent(false);
