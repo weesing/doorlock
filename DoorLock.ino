@@ -583,7 +583,6 @@ void sleepRing() {
 }
 #endif
 
-#define PIN_TILT_OUT  5
 void _reconcileState(bool force=false) {
   int tilt = digitalRead(PIN_TILT);
 //  Serial.println(tilt);
@@ -639,8 +638,6 @@ void _reconcileState(bool force=false) {
       reconcileCertainty = 0;
     }
   }
-  
-  digitalWrite(PIN_TILT_OUT, LOW);
 }
 
 void executeSequence() { 
