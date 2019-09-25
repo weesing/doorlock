@@ -1,9 +1,9 @@
 ///// TEST #defines
 //#define TEST
 #ifdef TEST
-  #define TEST_SEQUENCE
+//  #define TEST_SEQUENCE
   #ifndef TEST_SEQUENCE
-    #define TEST_SERVO
+//    #define TEST_SERVO
     #ifndef TEST_SERVO
       #define TEST_SERVO_LINEAR
     #endif
@@ -21,6 +21,8 @@
 #define SERVO_LINEAR_ENABLED
 #define RFID_ENABLED
 #define BLE_ENABLED
+//#define TILT_ENABLED
+#define ADXL_ENABLED
 
 ////////////////////////////////////////////// All required libraries
 #ifdef RFID_ENABLED
@@ -88,16 +90,23 @@ uint8_t intentState = UNKNOWN;
 //3, 5, 6, 9, 10, and 11 
 #define PIN_SERVO1            2
 #ifdef RING_ENABLED
-#define PIN_RING_LED          6
+  #define PIN_RING_LED          6
 #endif
 #define PIN_SERVO_LINEAR1     4
-#define PIN_TILT              13
-#define PIN_LOCK_BUTTON       3
+#ifdef TILT_ENABLED
+  #define PIN_TILT              13
+#endif
+#ifdef ADXL_ENABLED
+  #define PIN_ADXL              A0 // GY-61 ADXL335
+#endif
+#ifdef BUTTON_ENABLED
+  #define PIN_LOCK_BUTTON       3
+#endif
 #ifdef BUZZER_ENABLED
-#define PIN_BUZZER            7
+  #define PIN_BUZZER            7
 #endif
 #ifdef IR_ENABLED
-#define PIN_IR_RECEIVER1      8
+  #define PIN_IR_RECEIVER1      8
 #endif
 #ifdef BLE_ENABLED
 const uint8_t PIN_BLE_RXD                           = 10;
@@ -137,7 +146,7 @@ bool buttonCooldown = false;
 
 #ifdef SERVO_LINEAR_ENABLED
   // Linear Servo
-  #define SERVO_LINEAR_ENGAGED_DEG            68
+  #define SERVO_LINEAR_ENGAGED_DEG            73
   #define SERVO_LINEAR_DISENGAGED_DEG         32 //25
   #define SERVO_LINEAR_STEP                   2
   #define SERVO_LINEAR_MS                     10
@@ -170,10 +179,15 @@ bool buttonCooldown = false;
   unsigned long lastIRValue;
 #endif
 
-#define RECONCILE_MS 10
+#define RECONCILE_MS 100
 #define RECONCILE_CERTAINTY 3
 unsigned long reconcileLastTime;
 int reconcileCertainty = 0;
+
+#ifdef ADXL_ENABLED
+  #define ACCL_LOCKED_MIN_ANGLE             135
+  #define ACCL_UNLOCKED_MAX_ANGLE           120
+#endif
 
 #ifdef RING_ENABLED
   #define RING_NUMPIXELS                  24 // Popular NeoPixel ring size
@@ -416,9 +430,9 @@ void servoLoop () {
 #ifdef TEST_SERVO
   if (servoArmCurr == servoArmTarget) {
     ++servoTestCount;
-    Serial.print(F("Servo Test Count - ");
+    Serial.print(F("Servo Test Count - "));
     Serial.println(servoTestCount);
-    delay(100);
+    delay(1000);
     if (servoArmTarget == SERVO_UNLOCKED_DEG) {
       servoArmTarget = SERVO_LOCKED_DEG;
     }
@@ -430,9 +444,9 @@ void servoLoop () {
 #ifdef TEST_SERVO_LINEAR
   if (servoLinearArmCurr == servoLinearArmTarget) {
     ++servoLinearTestCount;
-    Serial.print(F("Servo Linear Test Count - ");
+    Serial.print(F("Servo Linear Test Count - "));
     Serial.println(servoLinearTestCount);
-    delay(100);
+    delay(1000);
     if (servoLinearArmTarget == SERVO_LINEAR_DISENGAGED_DEG) {
       servoLinearArmTarget = SERVO_LINEAR_ENGAGED_DEG;
     }
@@ -517,7 +531,6 @@ void irLoop() {
 #endif
 
 #ifdef RING_ENABLED
-
 void processRing() {
   
   if (currTime >= ringSleepTime) {
@@ -584,10 +597,23 @@ void sleepRing() {
 #endif
 
 void _reconcileState(bool force=false) {
+#ifdef TILT_ENABLED
   int tilt = digitalRead(PIN_TILT);
 //  Serial.println(tilt);
+#endif
+
+#ifdef ADXL_ENABLED
+  analogReference(EXTERNAL);
+  int zRot = analogRead(PIN_ADXL);
+  zRot = map(zRot, 0, 1023, 0, 255);
+  if (zRot >= ACCL_LOCKED_MIN_ANGLE) {
+//     Serial.print(F("ACCL LOCKED >"));
+//     Serial.println(zRot);
+#endif
+#ifdef TILT_ENABLED
   if (tilt == HIGH) {
 //    Serial.print("TILT HIGH vs ");
+#endif
 //    Serial.println(currState);
     if (currState != LOCKED) {
       if (reconcileCertainty < RECONCILE_CERTAINTY && !force) {
@@ -613,8 +639,15 @@ void _reconcileState(bool force=false) {
       reconcileCertainty = 0;
     }
   }
+#ifdef ADXL_ENABLED
+  else if (zRot <= ACCL_UNLOCKED_MAX_ANGLE) {
+//    Serial.print(F("ACCL UNLOCKED > "));
+//    Serial.println(zRot);
+#endif
+#ifdef TILT_ENABLED
   else { // tilt == LOW
 //    Serial.print("TILT LOW vs ");
+#endif
 //    Serial.println(currState);
     if (currState != UNLOCKED) {
       if (reconcileCertainty < RECONCILE_CERTAINTY && !force) {
@@ -1110,7 +1143,14 @@ void setup() {
 #endif
 
   pinMode(PIN_LOCK_BUTTON, INPUT);
+#ifdef TILT_ENABLED
   pinMode(PIN_TILT, INPUT);
+#endif
+
+#ifdef ADXL_ENABLED
+  pinMode(PIN_ADXL, INPUT);
+#endif
+
 #ifdef BUZZER_ENABLED
   pinMode(PIN_BUZZER, OUTPUT);
 #endif
