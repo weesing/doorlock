@@ -1,9 +1,9 @@
 ///// TEST #defines
 //#define TEST
 #ifdef TEST
-//  #define TEST_SEQUENCE
+  #define TEST_SEQUENCE
   #ifndef TEST_SEQUENCE
-//    #define TEST_SERVO
+    #define TEST_SERVO
     #ifndef TEST_SERVO
       #define TEST_SERVO_LINEAR
     #endif
@@ -68,7 +68,7 @@ unsigned long currTime;
 #define SEQUENCE_ACTION 3
 #define SEQUENCE_DISENGAGE 4
 #define SEQUENCE_END SEQUENCE_DISENGAGE+1
-const int SEQUENCE_WAIT[] = {500, 300, 500, 1000, 500, 100};
+const int SEQUENCE_WAIT[] = {500, 500, 500, 1000, 500, 100};
 unsigned long nextSequenceTimeStart = 0;
 int8_t currSequenceStage = SEQUENCE_IDLE;
 int8_t nextSequenceStage = SEQUENCE_IDLE;
@@ -146,7 +146,7 @@ bool buttonCooldown = false;
 
 #ifdef SERVO_LINEAR_ENABLED
   // Linear Servo
-  #define SERVO_LINEAR_ENGAGED_DEG            73
+  #define SERVO_LINEAR_ENGAGED_DEG            65//73
   #define SERVO_LINEAR_DISENGAGED_DEG         32 //25
   #define SERVO_LINEAR_STEP                   2
   #define SERVO_LINEAR_MS                     10
@@ -179,14 +179,14 @@ bool buttonCooldown = false;
   unsigned long lastIRValue;
 #endif
 
-#define RECONCILE_MS 100
+#define RECONCILE_MS 50
 #define RECONCILE_CERTAINTY 3
 unsigned long reconcileLastTime;
 int reconcileCertainty = 0;
 
 #ifdef ADXL_ENABLED
-  #define ACCL_LOCKED_MIN_ANGLE             135
-  #define ACCL_UNLOCKED_MAX_ANGLE           120
+  #define ACCL_LOCKED_MIN_ANGLE             140
+  #define ACCL_UNLOCKED_MAX_ANGLE           130
 #endif
 
 #ifdef RING_ENABLED
@@ -678,7 +678,7 @@ void executeSequence() {
 #ifdef TEST_SEQUENCE
     if (currTime >= testSequenceNextTime) {
       ++testSequenceCount;
-      Serial.print(F("Sequence Test Count - ");
+      Serial.print(F("Sequence Test Count - "));
       Serial.println(testSequenceCount);
       delay(500);
       if (testSequenceIntent == LOCKED) {
@@ -1142,7 +1142,10 @@ void setup() {
   lcdState = UNKNOWN;
 #endif
 
+#ifdef BUTTON_ENABLED
   pinMode(PIN_LOCK_BUTTON, INPUT);
+#endif
+
 #ifdef TILT_ENABLED
   pinMode(PIN_TILT, INPUT);
 #endif
