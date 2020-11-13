@@ -7,13 +7,22 @@
     #ifndef TEST_SERVO
       #define TEST_SERVO_LINEAR
     #endif
-  #endif
+   #endif
 #endif
 
-#define RING_ENABLED
+
+#define LOCKED 1
+#define UNLOCKED 0
+#define UNKNOWN -1
+#ifdef TEST_SEQUENCE
+  int testSequenceIntent = UNKNOWN;
+  int testSequenceCount = -1;
+  unsigned long testSequenceNextTime = 0;
+#endif
+
+//#define RING_ENABLED
 //#define BUZZER_ENABLED
 //#define IR_ENABLED
-//#define LCD_ENABLED
 #if !defined(TEST_SERVO) && !defined(TEST_SERVO_LINEAR) // only define BUTTON_ENABLED only if TEST_SERVO_LINEAR is not defined so as not to interrupt the tests.
 #define BUTTON_ENABLED
 #endif
@@ -21,12 +30,11 @@
 #define SERVO_LINEAR_ENABLED
 #define RFID_ENABLED
 #define BLE_ENABLED
-//#define TILT_ENABLED
 #define ADXL_ENABLED
 
 ////////////////////////////////////////////// All required libraries
 #ifdef RFID_ENABLED
-  #include <EEPROM.h>     // We are going to read and write PICC's UIDs from/to EEPROM
+#include <EEPROM.h>     // We are going to read and write PICC's UIDs from/to EEPROM
 #endif
 
 #ifdef BLE_ENABLED
@@ -34,32 +42,25 @@
 #endif
 
 #ifdef BUZZER_ENABLED
-  #include <TimerFreeTone.h>
+#include <TimerFreeTone.h>
 #endif
 
 #ifdef RING_ENABLED
-  #include <Adafruit_NeoPixel.h>
+#include <Adafruit_NeoPixel.h>
 #endif
 
 #ifdef IR_ENABLED
-  #include <IRremote.h>
+#include <IRremote.h>
 #endif
 
 #if defined(SERVO_ENABLED) || defined(SERVO_LINEAR_ENABLED)
   #include <Servo.h>
   #include <Wire.h>
 #endif
-
-#ifdef LCD_ENABLED
-  #include <LiquidCrystal_I2C.h>
-#endif
-////////////////////////////////////////////// End required libraries
-
+  
+  ////////////////////////////////////////////// End required libraries
+  
 unsigned long currTime;
-
-#define LOCKED 1
-#define UNLOCKED 0
-#define UNKNOWN -1
 
 #define SEQUENCE_IDLE -1
 #define SEQUENCE_INIT 0
@@ -68,14 +69,14 @@ unsigned long currTime;
 #define SEQUENCE_ACTION 3
 #define SEQUENCE_DISENGAGE 4
 #define SEQUENCE_END SEQUENCE_DISENGAGE+1
-const int SEQUENCE_WAIT[] = {500, 500, 500, 1000, 500, 100};
+const int SEQUENCE_WAIT[] = {500, 1000, 1000, 1000, 1000, 100};
 unsigned long nextSequenceTimeStart = 0;
 int8_t currSequenceStage = SEQUENCE_IDLE;
 int8_t nextSequenceStage = SEQUENCE_IDLE;
 
 uint8_t currState = UNKNOWN;
 uint8_t intentState = UNKNOWN;
-
+  
 #ifdef BUZZER_ENABLED
   #define HIGH_SOUND          3001
   #define LOW_SOUND           1000
@@ -87,32 +88,35 @@ uint8_t intentState = UNKNOWN;
 #endif
 
 //PWM
-//3, 5, 6, 9, 10, and 11 
-#define PIN_SERVO1            2
-#ifdef RING_ENABLED
-  #define PIN_RING_LED          6
+//3, 5, 6, 9, 10, and 11
+#ifdef SERVO_ENABLED            // MG996
+  #define PIN_SERVO1            2
 #endif
-#define PIN_SERVO_LINEAR1     4
-#ifdef TILT_ENABLED
-  #define PIN_TILT              13
-#endif
-#ifdef ADXL_ENABLED
-  #define PIN_ADXL              A0 // GY-61 ADXL335
+#ifdef SERVO_LINEAR_ENABLED     // SG90
+  #define PIN_SERVO_LINEAR1     4
 #endif
 #ifdef BUTTON_ENABLED
   #define PIN_LOCK_BUTTON       3
 #endif
+
+#ifdef RING_ENABLED
+  #define PIN_RING_LED          6
+#endif
+#ifdef ADXL_ENABLED             // GY-61 ADXL335
+  #define PIN_ADXL              A0
+#endif
 #ifdef BUZZER_ENABLED
   #define PIN_BUZZER            7
 #endif
-#ifdef IR_ENABLED
+  #ifdef IR_ENABLED
   #define PIN_IR_RECEIVER1      8
 #endif
 #ifdef BLE_ENABLED
-const uint8_t PIN_BLE_RXD                           = 10;
-const uint8_t PIN_BLE_TXD                           = 11;
+  #define PIN_BLE_RXD           10
+  #define PIN_BLE_TXD           11
 #endif
 
+///////////////////////////////// BUTTON
 #define PRESSED_COOLDOWN_MS 5000
 unsigned long pressedCooldownLastTime;
 bool buttonCooldown = false;
@@ -121,18 +125,13 @@ bool buttonCooldown = false;
   unsigned long buttonLastTime;
 #endif
 
-#ifdef TEST_SEQUENCE
-  int testSequenceIntent = UNKNOWN;
-  int testSequenceCount = -1;
-  unsigned long testSequenceNextTime = 0;
-#endif
-
+//////////////////////////////// MAIN SERVO
 #ifdef SERVO_ENABLED
   // Main Arm Servo
-  #define SERVO_LOCKED_DEG    30
-  #define SERVO_UNLOCKED_DEG  155
-  #define SERVO_STEP          2
-  #define SERVO_MS            10
+  #define SERVO_LOCKED_DEG    0
+  #define SERVO_UNLOCKED_DEG  180
+  #define SERVO_STEP          30
+  #define SERVO_MS            20
   Servo servoArm1;
   uint16_t servoArmTarget = SERVO_UNLOCKED_DEG;
   uint16_t servoArmCurr = SERVO_UNLOCKED_DEG;
@@ -144,11 +143,12 @@ bool buttonCooldown = false;
   #endif
 #endif
 
+//////////////////////////////// LINEAR SERVO
 #ifdef SERVO_LINEAR_ENABLED
   // Linear Servo
-  #define SERVO_LINEAR_ENGAGED_DEG            65//73
-  #define SERVO_LINEAR_DISENGAGED_DEG         32 //25
-  #define SERVO_LINEAR_STEP                   2
+  #define SERVO_LINEAR_ENGAGED_DEG            58
+  #define SERVO_LINEAR_DISENGAGED_DEG         35
+  #define SERVO_LINEAR_STEP                   1
   #define SERVO_LINEAR_MS                     10
   Servo servoLinearArm1;
   uint16_t servoLinearArmTarget               = SERVO_LINEAR_DISENGAGED_DEG;
@@ -161,25 +161,17 @@ bool buttonCooldown = false;
   #endif
 #endif
 
-#ifdef LCD_ENABLED
-  LiquidCrystal_I2C lcd(0x27, 16, 2);
-
-  #define LCD_MS 100
-  unsigned long lcdLastTime;
-  int lcdState = UNKNOWN;
-#endif
-
 #ifdef IR_ENABLED
   IRrecv irrecv1(PIN_IR_RECEIVER1);
   decode_results irResults1;
   #define IR_LOCK_CODE 0xFFE21D
   #define IR_UNLOCK_CODE 0xFFA25D
-  #define IR_MS 10
+  #define IR_MS 60
   unsigned long irLastTime;
   unsigned long lastIRValue;
 #endif
 
-#define RECONCILE_MS 50
+#define RECONCILE_MS 200
 #define RECONCILE_CERTAINTY 3
 unsigned long reconcileLastTime;
 int reconcileCertainty = 0;
@@ -230,7 +222,7 @@ int reconcileCertainty = 0;
   #define RFID_MODE_REGISTERING_MASTER          1
   #define RFID_MODE_REGISTERING_SLAVE           2
   uint8_t rfidMode                              = RFID_MODE_IDLE;
-    
+  
   byte readCard[4];     // Stores scanned ID read from RFID Module
   byte masterCard[4];   // Stores master card's ID read from EEPROM
   
@@ -239,44 +231,44 @@ int reconcileCertainty = 0;
 #endif
 
 #ifdef BLE_ENABLED
-SoftwareSerial btSerial(PIN_BLE_RXD, PIN_BLE_TXD); // RX | TX
+  SoftwareSerial btSerial(PIN_BLE_RXD, PIN_BLE_TXD); // RX | TX
 #endif
 
 #ifdef BUZZER_ENABLED
-void lockSound() {
-  soundToneCurr = HIGH_SOUND;
-  soundToneTarget = LOW_SOUND;
-}
-
-void unlockSound() {
-  soundToneCurr = LOW_SOUND;
-  soundToneTarget = HIGH_SOUND;
-}
-
-void soundLoop() {
-  if (currTime - soundToneLastTime > SOUND_MS) {
-    soundToneLastTime = currTime;
-    if (soundToneCurr != soundToneTarget) {
-      TimerFreeTone(PIN_BUZZER, soundToneCurr, SOUND_MS);
-      if (soundToneCurr < soundToneTarget) {
-        if (soundToneTarget - soundToneCurr <= SOUND_STEP) {
-          soundToneCurr = soundToneTarget;
+  void lockSound() {
+    soundToneCurr = HIGH_SOUND;
+    soundToneTarget = LOW_SOUND;
+  }
+  
+  void unlockSound() {
+    soundToneCurr = LOW_SOUND;
+    soundToneTarget = HIGH_SOUND;
+  }
+  
+  void soundLoop() {
+    if (currTime - soundToneLastTime > SOUND_MS) {
+      soundToneLastTime = currTime;
+      if (soundToneCurr != soundToneTarget) {
+        TimerFreeTone(PIN_BUZZER, soundToneCurr, SOUND_MS);
+        if (soundToneCurr < soundToneTarget) {
+          if (soundToneTarget - soundToneCurr <= SOUND_STEP) {
+            soundToneCurr = soundToneTarget;
+          }
+          else {
+            soundToneCurr += SOUND_STEP;
+          }
         }
-        else {
-          soundToneCurr+=SOUND_STEP;
-        }
-      }
-      else if (soundToneCurr > soundToneTarget) {
-        if (soundToneCurr - soundToneTarget <= SOUND_STEP) {
-          soundToneCurr = soundToneTarget;
-        }
-        else {
-          soundToneCurr-=SOUND_STEP;
+        else if (soundToneCurr > soundToneTarget) {
+          if (soundToneCurr - soundToneTarget <= SOUND_STEP) {
+            soundToneCurr = soundToneTarget;
+          }
+          else {
+            soundToneCurr -= SOUND_STEP;
+          }
         }
       }
     }
   }
-}
 #endif
 
 void startButtonCooldown() {
@@ -285,17 +277,19 @@ void startButtonCooldown() {
 }
 
 /**
- * Processes the lock/unlock state. This will start a sequence to lock/unlock (processed by other loop functions).
- * WARNING: Do not call this at every loop! Should only call it when an intent is triggered!
- * 
- * int intent - Set to true if we want to lock. Set to false if we want to unlock.
- */
-void processLockIntent(bool intent) {  
+   Processes the lock/unlock state. This will start a sequence to lock/unlock (processed by other loop functions).
+   WARNING: Do not call this at every loop! Should only call it when an intent is triggered!
 
+   int intent - Set to true if we want to lock. Set to false if we want to unlock.
+*/
+void processLockIntent(bool intent) {
+
+#ifndef TEST_SEQUENCE
   if (currTime - pressedCooldownLastTime <= PRESSED_COOLDOWN_MS) {
     return;
   }
-  
+#endif
+
   int lock = intent ? HIGH : LOW;
   int unlock = intent ? LOW : HIGH;
 
@@ -321,7 +315,6 @@ void processLockIntent(bool intent) {
 
 #ifdef BUTTON_ENABLED
 void buttonLoop() {
-
   if (currTime - buttonLastTime < BUTTON_MS) {
     return;
   }
@@ -358,14 +351,13 @@ void moveServo() {
   if (currTime - servoLastTime < SERVO_MS) {
     return;
   }
-  
   servoLastTime = currTime;
   if (servoArmCurr < servoArmTarget) {
     if (servoArmTarget - servoArmCurr <= SERVO_STEP) {
       servoArmCurr = servoArmTarget;
     }
     else {
-      servoArmCurr+=SERVO_STEP; 
+      servoArmCurr += SERVO_STEP;
       servoArm1.write(servoArmCurr);
     }
   }
@@ -374,16 +366,10 @@ void moveServo() {
       servoArmCurr = servoArmTarget;
     }
     else {
-      servoArmCurr-=SERVO_STEP;
+      servoArmCurr -= SERVO_STEP;
       servoArm1.write(servoArmCurr);
     }
   }
-#ifdef LCD_ENABLED
-  lcd.setCursor(0, 1);
-  lcd.print("S: ");
-  lcd.print(servoArmCurr);
-  lcd.print(" ");
-#endif
 }
 #endif
 
@@ -392,16 +378,16 @@ void moveServoLinear() {
   if (currTime - servoLinearLastTime < SERVO_LINEAR_MS) {
     return;
   }
-  
+
   servoLinearLastTime = currTime;
-  
+
   if (servoLinearArmCurr < servoLinearArmTarget) {
     if (servoLinearArmTarget - servoLinearArmCurr <= SERVO_LINEAR_STEP) {
       servoLinearArmCurr = servoLinearArmTarget;
       servoLinearArm1.write(servoLinearArmCurr);
     }
     else {
-      servoLinearArmCurr+=SERVO_LINEAR_STEP; 
+      servoLinearArmCurr += SERVO_LINEAR_STEP;
       servoLinearArm1.write(servoLinearArmCurr);
     }
   }
@@ -411,91 +397,52 @@ void moveServoLinear() {
       servoLinearArm1.write(servoLinearArmCurr);
     }
     else {
-      servoLinearArmCurr-=SERVO_LINEAR_STEP;
+      servoLinearArmCurr -= SERVO_LINEAR_STEP;
       servoLinearArm1.write(servoLinearArmCurr);
     }
   }
-//  Serial.println(servoLinearArmCurr);
-#ifdef LCD_ENABLED
-  lcd.setCursor(8, 1);
-  lcd.print("L: ");
-  lcd.print(servoLinearArmCurr);
-  lcd.print("  ");
-#endif
+  //  Serial.println(servoLinearArmCurr);
 }
 #endif
 
-#if defined(SERVO_ENABLED) || defined(SERVO_LINEAR_ENABLED)
 void servoLoop () {
-#ifdef TEST_SERVO
-  if (servoArmCurr == servoArmTarget) {
-    ++servoTestCount;
-    Serial.print(F("Servo Test Count - "));
-    Serial.println(servoTestCount);
-    delay(1000);
-    if (servoArmTarget == SERVO_UNLOCKED_DEG) {
-      servoArmTarget = SERVO_LOCKED_DEG;
-    }
-    else {
-      servoArmTarget = SERVO_UNLOCKED_DEG;
-    }
-  }
-#endif
-#ifdef TEST_SERVO_LINEAR
-  if (servoLinearArmCurr == servoLinearArmTarget) {
-    ++servoLinearTestCount;
-    Serial.print(F("Servo Linear Test Count - "));
-    Serial.println(servoLinearTestCount);
-    delay(1000);
-    if (servoLinearArmTarget == SERVO_LINEAR_DISENGAGED_DEG) {
-      servoLinearArmTarget = SERVO_LINEAR_ENGAGED_DEG;
-    }
-    else {
-      servoLinearArmTarget = SERVO_LINEAR_DISENGAGED_DEG;
-    }
-  }
-#endif
-
-#ifdef SERVO_ENABLED
-  moveServo();
-#endif
-#ifdef SERVO_LINEAR_ENABLED
-  moveServoLinear();
-#endif
-}
-#endif
-
-#ifdef LCD_ENABLED
-void lcdPrintLoop() {
-  if (currTime - lcdLastTime < LCD_MS) {
-    return;
-  }
-  lcdLastTime = currTime;
-
-  if (lcdState != currState) {
-    switch(currState) {
-      case LOCKED: {
-        lcd.clear();
-        lcd.print("Door LOCKED");
-        lcd.setCursor(0, 1);
-        break;
+#if defined(SERVO_ENABLED) || defined(SERVO_LINEAR_ENABLED)
+  #ifdef TEST_SERVO
+    if (servoArmCurr == servoArmTarget) {
+      ++servoTestCount;
+      Serial.print(F("Servo Test Count - "));
+      Serial.println(servoTestCount);
+      delay(1000);
+      if (servoArmTarget == SERVO_UNLOCKED_DEG) {
+        servoArmTarget = SERVO_LOCKED_DEG;
       }
-      default: {
-        lcd.clear();
-        lcd.print("Door UNLOCKED");
-        lcd.setCursor(0, 1);
-        break;
+      else {
+        servoArmTarget = SERVO_UNLOCKED_DEG;
       }
     }
-    lcdState = currState;
-  }
-#ifdef IR_ENABLED
-  lcd.setCursor(0, 2);
-  lcd.print(lastIRValue, HEX);
-  lcd.print("     ");
+  #endif
+  #ifdef TEST_SERVO_LINEAR
+    if (servoLinearArmCurr == servoLinearArmTarget) {
+      ++servoLinearTestCount;
+      Serial.print(F("Servo Linear Test Count - "));
+      Serial.println(servoLinearTestCount);
+      delay(1000);
+      if (servoLinearArmTarget == SERVO_LINEAR_DISENGAGED_DEG) {
+        servoLinearArmTarget = SERVO_LINEAR_ENGAGED_DEG;
+      }
+      else {
+        servoLinearArmTarget = SERVO_LINEAR_DISENGAGED_DEG;
+      }
+    }
+  #endif
+  #ifdef SERVO_ENABLED
+    moveServo();
+  #endif
+  #ifdef SERVO_LINEAR_ENABLED
+    moveServoLinear();
+  #endif
 #endif
 }
-#endif
 
 #ifdef IR_ENABLED
 void irLoop() {
@@ -532,7 +479,6 @@ void irLoop() {
 
 #ifdef RING_ENABLED
 void processRing() {
-  
   if (currTime >= ringSleepTime) {
     sleepRing();
   }
@@ -546,7 +492,7 @@ void processRing() {
         ringBrightnessCurr = ringBrightnessTarget;
       }
       else {
-        ringBrightnessCurr-=RING_STEP;
+        ringBrightnessCurr -= RING_STEP;
       }
     }
     else if (ringBrightnessCurr < ringBrightnessTarget) {
@@ -554,11 +500,11 @@ void processRing() {
         ringBrightnessCurr = ringBrightnessTarget;
       }
       else {
-        ringBrightnessCurr+=RING_STEP;
+        ringBrightnessCurr += RING_STEP;
       }
     }
-//    Serial.println(ringBrightnessCurr);
-    
+    //    Serial.println(ringBrightnessCurr);
+
     pixels.clear();
     for (int i = 0; i < RING_NUMPIXELS; ++i) {
       pixels.setPixelColor(i, pixels.Color(ringCurrColor[0], ringCurrColor[1], ringCurrColor[2]));
@@ -596,84 +542,64 @@ void sleepRing() {
 }
 #endif
 
-void _reconcileState(bool force=false) {
-#ifdef TILT_ENABLED
-  int tilt = digitalRead(PIN_TILT);
-//  Serial.println(tilt);
-#endif
-
+void _reconcileState(bool force = false) {
 #ifdef ADXL_ENABLED
   analogReference(EXTERNAL);
   int zRot = analogRead(PIN_ADXL);
   zRot = map(zRot, 0, 1023, 0, 255);
+      Serial.println(zRot);
   if (zRot >= ACCL_LOCKED_MIN_ANGLE) {
-//     Serial.print(F("ACCL LOCKED >"));
-//     Serial.println(zRot);
-#endif
-#ifdef TILT_ENABLED
-  if (tilt == HIGH) {
-//    Serial.print("TILT HIGH vs ");
-#endif
-//    Serial.println(currState);
     if (currState != LOCKED) {
       if (reconcileCertainty < RECONCILE_CERTAINTY && !force) {
         ++reconcileCertainty;
         return;
       }
-      Serial.print("LOCK Reconcile Certainty: ");
-      Serial.println(reconcileCertainty);
+      Serial.println("LOCKED");
       reconcileCertainty = 0;
-      Serial.print("LOCK Reconcile Certainty (AFTER): ");
-      Serial.println(reconcileCertainty);
-      Serial.println(F("************** LOCKED! **************"));
       currState = LOCKED;
+
 #ifdef RING_ENABLED
       lockRing();
 #endif
+
 #ifdef BUZZER_ENABLED
       lockSound();
 #endif
+
     }
     else {
       // reset in case of failed attempt
       reconcileCertainty = 0;
     }
   }
-#ifdef ADXL_ENABLED
   else if (zRot <= ACCL_UNLOCKED_MAX_ANGLE) {
-//    Serial.print(F("ACCL UNLOCKED > "));
-//    Serial.println(zRot);
-#endif
-#ifdef TILT_ENABLED
-  else { // tilt == LOW
-//    Serial.print("TILT LOW vs ");
-#endif
-//    Serial.println(currState);
     if (currState != UNLOCKED) {
       if (reconcileCertainty < RECONCILE_CERTAINTY && !force) {
         ++reconcileCertainty;
         return;
       }
-      Serial.print("UNLOCK Reconcile Certainty (BEFORE): ");
-      Serial.println(reconcileCertainty);
+      Serial.println("UNLOCKED");
       reconcileCertainty = 0;
-      Serial.println(F("************** UNLOCKED **************"));
       currState = UNLOCKED;
+
 #ifdef RING_ENABLED
       unlockRing();
 #endif
+
 #ifdef BUZZER_ENABLED
       unlockSound();
 #endif
+
     }
     else {
       // reset in case of failed attempt
       reconcileCertainty = 0;
     }
   }
+#endif
 }
 
-void executeSequence() { 
+void executeSequence() {
   if (nextSequenceStage == SEQUENCE_IDLE) {
 #ifdef TEST_SEQUENCE
     if (currTime >= testSequenceNextTime) {
@@ -704,102 +630,102 @@ void executeSequence() {
   currSequenceStage = nextSequenceStage;
   switch (nextSequenceStage) {
     case SEQUENCE_INIT: {
-      Serial.println(F("START --------------------------"));
-      Serial.println(F("SEQUENCE_INIT"));
+        Serial.println(F("START --------------------------"));
+        Serial.println(F("SEQUENCE_INIT"));
 #ifdef SERVO_LINEAR_ENABLED
-      // Disengage the main servo      
+        // Disengage the main servo
 #ifndef TEST_SERVO_LINEAR
-      servoLinearArm1.attach(PIN_SERVO_LINEAR1, 530, 2600);
+        servoLinearArm1.attach(PIN_SERVO_LINEAR1, 530, 2600);
 #endif
-      servoLinearArmTarget = SERVO_LINEAR_DISENGAGED_DEG;
+        servoLinearArmTarget = SERVO_LINEAR_DISENGAGED_DEG;
 #endif
-      nextSequenceStage = SEQUENCE_RESET_ARM;
-      break;
-    }
+        nextSequenceStage = SEQUENCE_RESET_ARM;
+        break;
+      }
     case SEQUENCE_RESET_ARM: {
 #ifdef SERVO_ENABLED
-      Serial.println(F("SEQUENCE_RESET_ARM"));
-      servoArm1.attach(PIN_SERVO1, 530, 2600);
+        Serial.println(F("SEQUENCE_RESET_ARM"));
+        servoArm1.attach(PIN_SERVO1, 530, 2600);
 #ifndef TEST_SEQUENCE
-      // Reset arm according to the current state
-      switch(currState) {
-        case LOCKED: {
-          Serial.println(F("Resetting arm to LOCKED"));
-          servoArmTarget = SERVO_LOCKED_DEG;
-          servoArmCurr = SERVO_LOCKED_DEG;
-          servoArm1.write(SERVO_LOCKED_DEG);
-          break;
+        // Reset arm according to the current state
+        switch (currState) {
+          case LOCKED: {
+              Serial.println(F("Resetting arm to LOCKED"));
+              servoArmTarget = SERVO_LOCKED_DEG;
+              servoArmCurr = SERVO_LOCKED_DEG;
+              servoArm1.write(SERVO_LOCKED_DEG);
+              break;
+            }
+          case UNLOCKED: {
+              Serial.println(F("Resetting arm to UNLOCKED"));
+              servoArmTarget = SERVO_UNLOCKED_DEG;
+              servoArmCurr = SERVO_UNLOCKED_DEG;
+              servoArm1.write(SERVO_UNLOCKED_DEG);
+              break;
+            }
         }
-        case UNLOCKED: {
-          Serial.println(F("Resetting arm to UNLOCKED"));
-          servoArmTarget = SERVO_UNLOCKED_DEG;
-          servoArmCurr = SERVO_UNLOCKED_DEG;
-          servoArm1.write(SERVO_UNLOCKED_DEG);
-          break;
-        }
+#endif
+#endif
+
+        nextSequenceStage = SEQUENCE_ENGAGE;
+        break;
       }
-#endif
-#endif
-      
-      nextSequenceStage = SEQUENCE_ENGAGE;
-      break;
-    }
     case SEQUENCE_ENGAGE: {
-      Serial.println(F("SEQUENCE_ENGAGE"));
-      
+        Serial.println(F("SEQUENCE_ENGAGE"));
+
 #ifdef SERVO_LINEAR_ENABLED
-      // Engage the main servo
-      servoLinearArmTarget = SERVO_LINEAR_ENGAGED_DEG;
+        // Engage the main servo
+        servoLinearArmTarget = SERVO_LINEAR_ENGAGED_DEG;
 #endif
 
-      nextSequenceStage = SEQUENCE_ACTION;
-      break;
-    }
+        nextSequenceStage = SEQUENCE_ACTION;
+        break;
+      }
     case SEQUENCE_ACTION: {
-      Serial.print(F("SEQUENCE_ACTION. Intent: "));
-      Serial.println(intentState);
+        Serial.print(F("SEQUENCE_ACTION. Intent: "));
+        Serial.println(intentState);
 #ifdef SERVO_ENABLED
-      servoArmTarget = (intentState == LOCKED ? SERVO_LOCKED_DEG : SERVO_UNLOCKED_DEG);
+        servoArmTarget = (intentState == LOCKED ? SERVO_LOCKED_DEG : SERVO_UNLOCKED_DEG);
 #endif
-      nextSequenceStage = SEQUENCE_DISENGAGE;
-      break;
-    }
+        nextSequenceStage = SEQUENCE_DISENGAGE;
+        break;
+      }
     case SEQUENCE_DISENGAGE: {
-      Serial.println(F("SEQUENCE_DISENGAGE"));
+        Serial.println(F("SEQUENCE_DISENGAGE"));
 #ifdef SERVO_LINEAR_ENABLED
-      // Disengage main servo
-      servoLinearArmTarget = SERVO_LINEAR_DISENGAGED_DEG;
+        // Disengage main servo
+        servoLinearArmTarget = SERVO_LINEAR_DISENGAGED_DEG;
 #endif
 
-      nextSequenceStage = SEQUENCE_END;
+        nextSequenceStage = SEQUENCE_END;
 
-      //Force a reconcile
-//      _reconcileState(true);
-      break;
-    }
+        //Force a reconcile
+        //      _reconcileState(true);
+        break;
+      }
     case SEQUENCE_END: {
-      Serial.println(F("SEQUENCE_END"));
-      Serial.println(F("DONE --------------------------"));
+//        Serial.println(F("SEQUENCE_END"));
+//        Serial.println(F("DONE --------------------------"));
 
 #ifdef SERVO_LINEAR_ENABLED
 #ifndef TEST_SERVO_LINEAR
-      servoLinearArm1.detach();
+        servoLinearArm1.detach();
 #endif
 #endif
 #ifdef SERVO_ENABLED
-      servoArm1.detach();
+        servoArm1.detach();
 #endif
-      
-      nextSequenceStage = SEQUENCE_IDLE;
-      currSequenceStage = SEQUENCE_IDLE;
-      intentState = UNKNOWN;
+
+        nextSequenceStage = SEQUENCE_IDLE;
+        currSequenceStage = SEQUENCE_IDLE;
+        intentState = UNKNOWN;
 
 #ifdef TEST_SEQUENCE
-      testSequenceNextTime = currTime + 1000;
+        testSequenceNextTime = currTime + 1000;
 #endif
 
-      break;
-    }
+        break;
+      }
   }
 }
 
@@ -808,7 +734,7 @@ void reconcileCurrState () {
     return;
   }
   reconcileLastTime = currTime;
-  
+
   // Lock is busy, later
   if (currSequenceStage != SEQUENCE_IDLE) {
     return;
@@ -816,48 +742,6 @@ void reconcileCurrState () {
 
   _reconcileState();
 }
-
-#ifdef LCD_ENABLED
-void initI2C() {
-
-  byte error, address;
-  int nDevices;
-
-  Serial.println(F("Scanning I2C devices...");
-  nDevices = 0;
-  for(address = 1; address < 127; address++) {
-    Wire.beginTransmission(address);
-    error = Wire.endTransmission();
-
-    if (error == 0) {
-      Serial.print(F("I2C device found at address 0x");
-      if (address < 16) {
-        Serial.print(F("0");
-      }
-      Serial.print(address, HEX);
-      Serial.println(F(" !");
-  
-      nDevices++;
-    }
-    else if (error == 4) {
-      Serial.print(F("Unknown error at address 0x");
-      if (address < 16) {
-        Serial.print(F("0");
-      }
-      Serial.println(address, HEX);
-    }
-  }
-
-  if (nDevices == 0) {
-    Serial.println(F("No I2C devices found");
-  }
-  else {
-    Serial.println(F("Scanning done\n");
-  }
-  
-  lcd.begin();
-}
-#endif
 
 #ifdef RFID_ENABLED
 void printBytes( byte toPrint[] ) {
@@ -877,20 +761,20 @@ void showCardDetails() {
   Serial.println(F("Slave cards >> "));
   for (uint8_t slotIndex = 0; slotIndex < RFID_EEPROM_SLAVE_CARD_SLOTS; ++slotIndex) {
     byte thisSlave[4];
-    for(uint8_t i = 0; i < 4; ++i) {
+    for (uint8_t i = 0; i < 4; ++i) {
       thisSlave[i] = EEPROM.read(RFID_EEPROM_SLAVE_CARD_START + (slotIndex * RFID_EEPROM_SLAVE_CARD_SLOT_OFFSET) + i);
     }
     printBytes(thisSlave);
   }
 }
 
-bool checkTwo ( byte a[], byte b[] ) {   
+bool checkTwo ( byte a[], byte b[] ) {
   for ( uint8_t k = 0; k < 4; k++ ) {   // Loop 4 times
     if ( a[k] != b[k] ) {     // IF a != b then false, because: one fails, all fail
-       return false;
+      return false;
     }
   }
-  return true;  
+  return true;
 }
 
 void copyBytes( byte* src, byte* dst ) {
@@ -915,7 +799,7 @@ bool isSlave( byte test[] ) {
   }
   for (uint8_t slotIndex = 0; slotIndex < RFID_EEPROM_SLAVE_CARD_SLOTS; ++slotIndex) {
     byte thisSlave[4];
-    for(uint8_t i = 0; i < 4; ++i) {
+    for (uint8_t i = 0; i < 4; ++i) {
       thisSlave[i] = EEPROM.read(RFID_EEPROM_SLAVE_CARD_START + (slotIndex * RFID_EEPROM_SLAVE_CARD_SLOT_OFFSET) + i);
     }
     if (checkTwo(thisSlave, test)) {
@@ -938,8 +822,9 @@ void eraseEEPROM() {
 }
 
 void initRFID() {
+  Serial.println(F("Initializing RFID"));
   showCardDetails();
-//  eraseEEPROM();
+  //  eraseEEPROM();
 
   if (EEPROM.read(1) != MASTER_CARD_DEFINED_CODE) {
     Serial.println(F("No Master Card Defined, scan a PICC to define as Master Card"));
@@ -947,11 +832,12 @@ void initRFID() {
     eraseEEPROM();
   }
   else {
+    Serial.println(F("RIFD_MODE_IDLE"));
     rfidMode = RFID_MODE_IDLE;
   }
 }
 
-void tryRegisterMasterCard() {  
+void tryRegisterMasterCard() {
   if (cardAttemptsCount == 0) {
     Serial.println(F("Card detected. Please scan 2 more times to confirm card as master."));
     copyBytes(readCard, cardCandidates[0]);
@@ -962,9 +848,9 @@ void tryRegisterMasterCard() {
     Serial.println(F("Comparing cards"));
     printBytes(readCard);
     printBytes(cardCandidates[0]);
-    if(checkTwo(readCard, cardCandidates[0])) { // check against the first entry
+    if (checkTwo(readCard, cardCandidates[0])) { // check against the first entry
       copyBytes(readCard, cardCandidates[cardAttemptsCount]);
-      
+
       ++cardAttemptsCount;
       Serial.print(F("--- Master Card Registration attempt "));
       Serial.println(cardAttemptsCount);
@@ -975,12 +861,12 @@ void tryRegisterMasterCard() {
       copyBytes(readCard, cardCandidates[0]);
     }
   }
-  
+
   if (cardAttemptsCount >= CARD_ATTEMPT_MAX_COUNT) {
     // 3 consecutive attempts
     Serial.print(F("Confirmed Master Card: "));
     printBytes(readCard);
-  
+
     // Register this card as master
     for ( uint8_t j = 0; j < 4; j++ ) {        // Loop 4 times
       EEPROM.write( j + RFID_EEPROM_MASTER_CARD_OFFSET, readCard[j] );  // Write scanned PICC's UID to EEPROM, start from address 3
@@ -999,7 +885,7 @@ void tryRegisterSlaveCard() {
     rfidMode = RFID_MODE_IDLE;
     return;
   }
-  
+
   if (cardAttemptsCount == 0) {
     Serial.println(F("Card detected. Please scan 2 more times to confirm card as slave."));
     copyBytes(readCard, cardCandidates[0]);
@@ -1008,9 +894,9 @@ void tryRegisterSlaveCard() {
     registerSlaveCardTimeout = currTime + RFID_SLAVE_CARD_REGISTRATION_TIMEOUT;
   }
   else {
-    if(checkTwo(readCard, cardCandidates[0])) { // check against the first entry
+    if (checkTwo(readCard, cardCandidates[0])) { // check against the first entry
       copyBytes(readCard, cardCandidates[cardAttemptsCount]);
-      
+
       ++cardAttemptsCount;
       Serial.print(F("--- Slave Card Registration attempt "));
       Serial.println(cardAttemptsCount);
@@ -1022,7 +908,7 @@ void tryRegisterSlaveCard() {
       rfidMode = RFID_MODE_IDLE;
     }
   }
-  
+
   if (cardAttemptsCount >= CARD_ATTEMPT_MAX_COUNT) {
     // 3 consecutive attempts
     rfidMode = RFID_MODE_IDLE;
@@ -1041,13 +927,12 @@ void tryRegisterSlaveCard() {
 
     showCardDetails();
   }
-  
+
 }
 
 bool tryReceiveFromRFIDUnit() {
-  
+
 #ifdef BLE_ENABLED
-  int i = 0;
   if (btSerial.available()) {
     byte cardId[4];
     btSerial.readBytes(readCard, 4);
@@ -1055,7 +940,7 @@ bool tryReceiveFromRFIDUnit() {
     return true;
   }
   else {
-    return false; 
+    return false;
   }
 #else
   return false;
@@ -1082,37 +967,37 @@ void rfidLoop() {
   }
 
   if (tryReceiveFromRFIDUnit()) {
-    switch(rfidMode) {
+    switch (rfidMode) {
       case RFID_MODE_REGISTERING_MASTER: {
-        tryRegisterMasterCard();
-        return;
-      }
+          tryRegisterMasterCard();
+          return;
+        }
       case RFID_MODE_REGISTERING_SLAVE: {
-        tryRegisterSlaveCard();
-        return;
-      }
-      case RFID_MODE_IDLE: 
+          tryRegisterSlaveCard();
+          return;
+        }
+      case RFID_MODE_IDLE:
       default: {
-        if (isMaster(readCard)) {
-          Serial.println(F("Master card detected! Switch mode to Slave card registration."));
-          cardAttemptsCount = 0;
-          rfidMode = RFID_MODE_REGISTERING_SLAVE;
-          registerSlaveCardTimeout = currTime + RFID_SLAVE_CARD_REGISTRATION_TIMEOUT;
-        }
-        else if (isSlave(readCard)) {
-          Serial.print(F("This is a slave? "));
-          printBytes(readCard);
-          if (currState == LOCKED) {
-            Serial.println(F("RFID authorized, processing UNLOCK"));
-            processLockIntent(false);
+          if (isMaster(readCard)) {
+            Serial.println(F("Master card detected! Switch mode to Slave card registration."));
+            cardAttemptsCount = 0;
+            rfidMode = RFID_MODE_REGISTERING_SLAVE;
+            registerSlaveCardTimeout = currTime + RFID_SLAVE_CARD_REGISTRATION_TIMEOUT;
           }
-          else {
-            Serial.println(F("RFID authorized, processing LOCK"));
-            processLockIntent(true);
+          else if (isSlave(readCard)) {
+            Serial.print(F("This is a slave? "));
+            printBytes(readCard);
+            if (currState == LOCKED) {
+              Serial.println(F("RFID authorized, processing UNLOCK"));
+              processLockIntent(false);
+            }
+            else {
+              Serial.println(F("RFID authorized, processing LOCK"));
+              processLockIntent(true);
+            }
           }
+          break;
         }
-        break;
-      }
     }
   }
 }
@@ -1120,6 +1005,8 @@ void rfidLoop() {
 
 #ifdef BLE_ENABLED
 void initBLE() {
+  Serial.println(F("initializing BLE"));
+  
   btSerial.begin(9600);
 }
 #endif
@@ -1130,24 +1017,15 @@ void setup() {
 #if defined(SERVO_ENABLED) || defined(SERVO_LINEAR_ENABLED)
   Wire.begin();
 #endif
-  
+
   Serial.begin(9600);
-  while(!Serial) {
+  while (!Serial) {
     Serial.println(F("I2C Scanner"));
   }
   Serial.println(F("Serial READY!\n"));
 
-#ifdef LCD_ENABLED
-  initI2C();
-  lcdState = UNKNOWN;
-#endif
-
 #ifdef BUTTON_ENABLED
   pinMode(PIN_LOCK_BUTTON, INPUT);
-#endif
-
-#ifdef TILT_ENABLED
-  pinMode(PIN_TILT, INPUT);
 #endif
 
 #ifdef ADXL_ENABLED
@@ -1203,10 +1081,13 @@ void setup() {
 #endif
 }
 
+//int loopCount = 0;
 // the loop function runs over and over again forever
 void loop() {
+//  Serial.println(F("DONE --------------------------"));
+
   currTime = millis();
-  
+
   reconcileCurrState(); // reconcile the current status using reed
 
 #ifdef BUTTON_ENABLED
@@ -1222,13 +1103,11 @@ void loop() {
 #if defined(SERVO_ENABLED) || defined(SERVO_LINEAR_ENABLED)
   servoLoop();
 #endif
-#ifdef LCD_ENABLED
-  lcdPrintLoop();
-#endif
 #ifdef RING_ENABLED
   ringLoop();
 #endif
 #ifdef BUZZER_ENABLED
   soundLoop();
 #endif
+
 }
