@@ -63,7 +63,7 @@ unsigned long testSequenceNextTime = 0;
 #endif
 
 ///////////////////////////////// BUTTON
-#define PRESSED_COOLDOWN_MS 5000
+#define PRESSED_COOLDOWN_MS 2000
 unsigned long pressedCooldownLastTime;
 bool buttonCoolingDown = false;
 #define BUTTON_MS 100
@@ -82,7 +82,7 @@ uint32_t servoTestCount = -1; //For keeping track of how many times the servo ha
 //////////////////////////////// LINEAR SERVO
 #define SERVO_LINEAR_ENGAGED_DEG 72
 #define SERVO_LINEAR_DISENGAGED_DEG 35
-#define SERVO_LINEAR_STEP 1
+#define SERVO_LINEAR_STEP 5
 #define SERVO_LINEAR_MS 10
 Servo servoLinearArm;
 uint16_t servoLinearArmTarget = SERVO_LINEAR_DISENGAGED_DEG;
@@ -328,8 +328,8 @@ unsigned long g_currTime;
 #define SEQUENCE_DISENGAGE 5
 #define SEQUENCE_END 6
 
-#define LOCKED_MIN_ANGLE 150
-#define UNLOCKED_MAX_ANGLE 106
+#define LOCKED_MIN_ANGLE 142
+#define UNLOCKED_MAX_ANGLE 110
 
 int8_t g_currSequenceStage = SEQUENCE_IDLE;
 
@@ -533,7 +533,7 @@ int readADXL()
   analogReference(EXTERNAL);
   int yRot = analogRead(PIN_ADXL);
   yRot = map(yRot, 0, 1023, 0, 255);
-  // Serial.println(yRot);
+  Serial.println(yRot);
   return yRot;
 }
 
