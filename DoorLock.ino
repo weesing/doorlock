@@ -328,8 +328,8 @@ unsigned long g_currTime;
 #define SEQUENCE_DISENGAGE 5
 #define SEQUENCE_END 6
 
-#define LOCKED_MIN_ANGLE 142
-#define UNLOCKED_MAX_ANGLE 110
+#define LOCKED_MIN_ANGLE 150
+#define UNLOCKED_MAX_ANGLE 105
 
 int8_t g_currSequenceStage = SEQUENCE_IDLE;
 
@@ -533,7 +533,7 @@ int readADXL()
   analogReference(EXTERNAL);
   int yRot = analogRead(PIN_ADXL);
   yRot = map(yRot, 0, 1023, 0, 255);
-  Serial.println(yRot);
+  // Serial.println(yRot);
   return yRot;
 }
 
