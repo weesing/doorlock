@@ -31,6 +31,9 @@ unsigned long testSequenceNextTime = 0;
 #include <SoftwareSerial.h>
 #include <Servo.h>
 #include <Wire.h>
+#include <SPI.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
 
 #ifdef BUZZER_ENABLED
 #include <TimerFreeTone.h>
@@ -79,10 +82,14 @@ Servo servoRotateArm;
 uint32_t servoTestCount = -1; //For keeping track of how many times the servo has been moved/tested. For battery capacity testing.
 #endif
 
+///////////////////////// ADXL
+#define LOCKED_MIN_ANGLE 580
+#define UNLOCKED_MAX_ANGLE 436
+
 //////////////////////////////// LINEAR SERVO
-#define SERVO_LINEAR_ENGAGED_DEG 72
-#define SERVO_LINEAR_DISENGAGED_DEG 35
-#define SERVO_LINEAR_STEP 5
+#define SERVO_LINEAR_ENGAGED_DEG 82
+#define SERVO_LINEAR_DISENGAGED_DEG 50
+#define SERVO_LINEAR_STEP 4
 #define SERVO_LINEAR_MS 10
 Servo servoLinearArm;
 uint16_t servoLinearArmTarget = SERVO_LINEAR_DISENGAGED_DEG;
@@ -123,6 +130,65 @@ const uint8_t ONES[] = {0xFF, 0xFF, 0xFF, 0xFF};
 
 ///////////////////////// BLE
 SoftwareSerial btSerial(PIN_BLE_RXD, PIN_BLE_TXD); // RX | TX
+
+///////////////////////// OLED Display
+#define SCREEN_WIDTH 128 // OLED display width, in pixels
+#define SCREEN_HEIGHT 32 // OLED display height, in pixels
+
+// Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
+#define OLED_RESET 4 // Reset pin # (or -1 if sharing Arduino reset pin)
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
+#define ICON_BMP_HEIGHT 22
+#define ICON_BMP_WIDTH 16
+
+static const unsigned char PROGMEM lock_bmp[] =
+    {B00000000, B00000000,
+     B00000000, B00000000,
+     B00000000, B00000000,
+     B00000000, B00000000,
+     B00000111, B11100000,
+     B00001100, B00110000,
+     B00001000, B00010000,
+     B00001000, B00010000,
+     B00001000, B00010000,
+     B00001000, B00010000,
+     B00111111, B11111100,
+     B01111111, B11111110,
+     B01111111, B11111110,
+     B01111100, B00111110,
+     B01111100, B00111110,
+     B01111110, B01111110,
+     B01111110, B01111110,
+     B01111110, B01111110,
+     B01111111, B11111110,
+     B01111111, B11111110,
+     B01111111, B11111110,
+     B00111111, B11111100};
+
+static const unsigned char PROGMEM unlock_bmp[] =
+    {B00000111, B11100000,
+     B00001100, B00110000,
+     B00001000, B00010000,
+     B00001000, B00010000,
+     B00001000, B00010000,
+     B00001000, B00010000,
+     B00000000, B00010000,
+     B00000000, B00010000,
+     B00000000, B00010000,
+     B00000000, B00010000,
+     B00111111, B11111100,
+     B01111111, B11111110,
+     B01111111, B11111110,
+     B01111100, B00111110,
+     B01111100, B00111110,
+     B01111110, B01111110,
+     B01111110, B01111110,
+     B01111110, B01111110,
+     B01111111, B11111110,
+     B01111111, B11111110,
+     B01111111, B11111110,
+     B00111111, B11111100};
 
 #ifdef IR_ENABLED
 IRrecv irrecv1(PIN_IR_RECEIVER1);
@@ -328,9 +394,6 @@ unsigned long g_currTime;
 #define SEQUENCE_DISENGAGE 5
 #define SEQUENCE_END 6
 
-#define LOCKED_MIN_ANGLE 150
-#define UNLOCKED_MAX_ANGLE 105
-
 int8_t g_currSequenceStage = SEQUENCE_IDLE;
 
 uint8_t g_currState = UNKNOWN;
@@ -469,6 +532,15 @@ bool moveLinearServo()
   return servoLinearArmCurr == servoLinearArmTarget;
 }
 
+int readADXL()
+{
+  analogReference(EXTERNAL);
+  int yRot = analogRead(PIN_ADXL);
+  // yRot = map(yRot, 0, 1023, 0, 255);
+  // Serial.println(yRot);
+  return yRot;
+}
+
 void performSequenceActions()
 {
   switch (g_currSequenceStage)
@@ -505,6 +577,8 @@ void performSequenceActions()
   case SEQUENCE_ACTION:
     if (g_currState == g_intentState)
     {
+      int yRot = readADXL();
+      Serial.println(yRot);
       Serial.println(F("Main servo action completed. Stopping rotation."));
       servoRotateArm.writeMicroseconds(SERVO_IDLE_FREQ);
       g_currSequenceStage = SEQUENCE_DISENGAGE;
@@ -526,15 +600,6 @@ void performSequenceActions()
     Serial.println(F("SEQUENCE_IDLE"));
     break;
   }
-}
-
-int readADXL()
-{
-  analogReference(EXTERNAL);
-  int yRot = analogRead(PIN_ADXL);
-  yRot = map(yRot, 0, 1023, 0, 255);
-  // Serial.println(yRot);
-  return yRot;
 }
 
 void reconcileLockState()
@@ -563,6 +628,47 @@ void reconcileLockState()
     Serial.println("State changed to UNLOCKED.");
     g_currState = UNLOCKED;
   }
+}
+
+void reconcileOLEDDisplay()
+{
+  int logoX = 10;
+  int textX = 28;
+  int textY = 13;
+
+  display.clearDisplay();
+
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(textX, 0);
+  display.println(F("Knob"));
+  display.setCursor(80, 0);
+  display.println(g_currKnobAngle);
+
+  unsigned char* bmp;
+  String lockStateString;
+  if (g_currState == LOCKED)
+  {
+     display.drawBitmap(
+         logoX - (ICON_BMP_WIDTH) / 2,
+         (display.height() - ICON_BMP_HEIGHT) / 2,
+         lock_bmp, ICON_BMP_WIDTH, ICON_BMP_HEIGHT, 1);
+    lockStateString = "LOCKED";
+  }
+  else
+  {
+    display.drawBitmap(
+        logoX - (ICON_BMP_WIDTH) / 2,
+        (display.height() - ICON_BMP_HEIGHT) / 2,
+        unlock_bmp, ICON_BMP_WIDTH, ICON_BMP_HEIGHT, 1);
+    lockStateString = "Unlocked";
+  }
+  display.setTextSize(2);
+  display.setCursor(textX, textY);
+  display.println(lockStateString);
+  display.dim(false);
+
+  display.display();
 }
 
 void printBytes(byte toPrint[])
@@ -595,7 +701,7 @@ void showCardDetails()
   }
 }
 
-bool checkTwo(byte a[], byte b[])
+bool bufferCmp(byte a[], byte b[])
 {
   for (uint8_t k = 0; k < 4; k++)
   { // Loop 4 times
@@ -625,12 +731,14 @@ void readCardFromEEPROM(uint8_t address, byte *dst)
 
 bool isMaster(byte test[])
 {
-  return checkTwo(test, masterCard) && !checkTwo(test, ZEROS) && !checkTwo(test, ONES);
+  return bufferCmp(test, masterCard) && 
+    !bufferCmp(test, ZEROS) && 
+    !bufferCmp(test, ONES);
 }
 
 bool isSlave(byte test[])
 {
-  if (checkTwo(test, ZEROS) || checkTwo(test, ONES))
+  if (bufferCmp(test, ZEROS) || bufferCmp(test, ONES))
   {
     return false;
   }
@@ -641,7 +749,7 @@ bool isSlave(byte test[])
     {
       thisSlave[i] = EEPROM.read(RFID_EEPROM_SLAVE_CARD_START + (slotIndex * RFID_EEPROM_SLAVE_CARD_SLOT_OFFSET) + i);
     }
-    if (checkTwo(thisSlave, test))
+    if (bufferCmp(thisSlave, test))
     {
       return true;
     }
@@ -665,9 +773,9 @@ void eraseEEPROM()
   rfidMode = RFID_MODE_REGISTERING_MASTER;
 }
 
-void initRFID()
+void retrieveRFIDData()
 {
-  Serial.println(F("Initializing RFID"));
+  Serial.println(F("Retrieving RFID data"));
   showCardDetails();
   //  eraseEEPROM();
 
@@ -698,7 +806,7 @@ void tryRegisterMasterCard()
     Serial.println(F("Comparing cards"));
     printBytes(readCard);
     printBytes(cardCandidates[0]);
-    if (checkTwo(readCard, cardCandidates[0]))
+    if (bufferCmp(readCard, cardCandidates[0]))
     { // check against the first entry
       copyBytes(readCard, cardCandidates[cardAttemptsCount]);
 
@@ -752,7 +860,7 @@ void tryRegisterSlaveCard()
   }
   else
   {
-    if (checkTwo(readCard, cardCandidates[0]))
+    if (bufferCmp(readCard, cardCandidates[0]))
     { // check against the first entry
       copyBytes(readCard, cardCandidates[cardAttemptsCount]);
 
@@ -791,7 +899,7 @@ void tryRegisterSlaveCard()
   }
 }
 
-bool tryReceiveFromRFIDUnit()
+bool peekBLESerial()
 {
   if (btSerial.available())
   {
@@ -806,7 +914,7 @@ bool tryReceiveFromRFIDUnit()
   }
 }
 
-void rfidLoop()
+void bleLoop()
 {
   if (g_currTime - rfidLastTime < RFID_MS)
   {
@@ -829,7 +937,7 @@ void rfidLoop()
     }
   }
 
-  if (tryReceiveFromRFIDUnit())
+  if (peekBLESerial())
   {
     switch (rfidMode)
     {
@@ -879,10 +987,11 @@ void loop()
 {
   g_currTime = millis();
   reconcileLockState();
+  reconcileOLEDDisplay();
   if (g_currSequenceStage == SEQUENCE_IDLE)
   {
     buttonLoop();
-    rfidLoop();
+    bleLoop();
   }
   else
   {
@@ -924,6 +1033,15 @@ void initADXL()
   }
 }
 
+void initOLED()
+{
+  // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
+  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C))
+  { // Address 0x3C for 128x32
+    Serial.println(F("SSD1306 allocation failed"));
+  }
+}
+
 // the setup function runs once when you press reset or power the board
 void setup()
 {
@@ -955,8 +1073,9 @@ void setup()
 #ifndef TEST_SERVO
   servoLinearArm.detach();
 #endif
-  initRFID();
+  retrieveRFIDData();
   initBLE();
+  initOLED();
 
 #ifdef BUZZER_ENABLED
   pinMode(PIN_BUZZER, OUTPUT);
