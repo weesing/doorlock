@@ -645,14 +645,14 @@ void reconcileOLEDDisplay()
   display.setCursor(80, 0);
   display.println(g_currKnobAngle);
 
-  unsigned char* bmp;
+  unsigned char *bmp;
   String lockStateString;
   if (g_currState == LOCKED)
   {
-     display.drawBitmap(
-         logoX - (ICON_BMP_WIDTH) / 2,
-         (display.height() - ICON_BMP_HEIGHT) / 2,
-         lock_bmp, ICON_BMP_WIDTH, ICON_BMP_HEIGHT, 1);
+    display.drawBitmap(
+        logoX - (ICON_BMP_WIDTH) / 2,
+        (display.height() - ICON_BMP_HEIGHT) / 2,
+        lock_bmp, ICON_BMP_WIDTH, ICON_BMP_HEIGHT, 1);
     lockStateString = "LOCKED";
   }
   else
@@ -731,9 +731,9 @@ void readCardFromEEPROM(uint8_t address, byte *dst)
 
 bool isMaster(byte test[])
 {
-  return bufferCmp(test, masterCard) && 
-    !bufferCmp(test, ZEROS) && 
-    !bufferCmp(test, ONES);
+  return bufferCmp(test, masterCard) &&
+         !bufferCmp(test, ZEROS) &&
+         !bufferCmp(test, ONES);
 }
 
 bool isSlave(byte test[])
@@ -776,8 +776,8 @@ void eraseEEPROM()
 void retrieveRFIDData()
 {
   Serial.println(F("Retrieving RFID data"));
+  // eraseEEPROM();
   showCardDetails();
-  //  eraseEEPROM();
 
   if (EEPROM.read(1) != MASTER_CARD_DEFINED_CODE)
   {
@@ -903,8 +903,31 @@ bool peekBLESerial()
 {
   if (btSerial.available())
   {
-    byte cardId[4];
     btSerial.readBytes(readCard, 4);
+    printBytes(readCard);
+    return true;
+  }
+  else if (Serial.available())
+  {
+    byte tempReadCard[8];
+    Serial.readBytes(tempReadCard, 8);
+    bool isCard = true;
+    for (int i = 0; i < 4; ++i)
+    {
+      if (tempReadCard[i] != 0xf7)
+      {
+        isCard = false;
+      }
+    }
+    if (!isCard)
+    {
+      return false;
+    }
+    Serial.println(F("Card scan detected"));
+    for (int i = 4; i < 8; ++i)
+    {
+      readCard[i - 4] = tempReadCard[i];
+    }
     printBytes(readCard);
     return true;
   }
