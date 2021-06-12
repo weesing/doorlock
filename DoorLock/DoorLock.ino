@@ -536,7 +536,7 @@ bool moveLinearServo()
 int readADXL()
 {
   analogReference(EXTERNAL);
-  int readCount = 0;
+  uint8_t readCount = 0;
   int total = 0;
   for (readCount = 0; readCount < ADXL_READ_COUNT; ++readCount)
   {
