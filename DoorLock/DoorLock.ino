@@ -85,6 +85,7 @@ uint32_t servoTestCount = -1; //For keeping track of how many times the servo ha
 ///////////////////////// ADXL
 #define LOCKED_MIN_ANGLE 580
 #define UNLOCKED_MAX_ANGLE 436
+#define ADXL_READ_COUNT 5
 
 //////////////////////////////// LINEAR SERVO
 #define SERVO_LINEAR_ENGAGED_DEG 82
@@ -535,7 +536,12 @@ bool moveLinearServo()
 int readADXL()
 {
   analogReference(EXTERNAL);
-  int yRot = analogRead(PIN_ADXL);
+  int readCount = 0;
+  int total = 0;
+  for(readCount = 0; readCount < ADXL_READ_COUNT; ++readCount) {
+    total += analogRead(PIN_ADXL);
+  }
+  int yRot = total / ADXL_READ_COUNT;
   // yRot = map(yRot, 0, 1023, 0, 255);
   // Serial.println(yRot);
   return yRot;
