@@ -538,7 +538,8 @@ int readADXL()
   analogReference(EXTERNAL);
   int readCount = 0;
   int total = 0;
-  for(readCount = 0; readCount < ADXL_READ_COUNT; ++readCount) {
+  for (readCount = 0; readCount < ADXL_READ_COUNT; ++readCount)
+  {
     total += analogRead(PIN_ADXL);
   }
   int yRot = total / ADXL_READ_COUNT;
