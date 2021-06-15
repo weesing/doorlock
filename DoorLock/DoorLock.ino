@@ -126,8 +126,8 @@ uint8_t rfidMode = RFID_MODE_IDLE;
 byte readCard[4];   // Stores scanned ID read from RFID Module
 byte masterCard[4]; // Stores master card's ID read from EEPROM
 
-const uint8_t ZEROS[] = {0x0, 0x0, 0x0, 0x0};
-const uint8_t ONES[] = {0xFF, 0xFF, 0xFF, 0xFF};
+byte ZEROS[] = {0x0, 0x0, 0x0, 0x0};
+byte ONES[] = {0xFF, 0xFF, 0xFF, 0xFF};
 
 ///////////////////////// BLE
 SoftwareSerial btSerial(PIN_BLE_RXD, PIN_BLE_TXD); // RX | TX
