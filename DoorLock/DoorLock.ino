@@ -85,11 +85,11 @@ uint32_t servoTestCount = -1; //For keeping track of how many times the servo ha
 ///////////////////////// ADXL
 #define LOCKED_MIN_ANGLE 580
 #define UNLOCKED_MAX_ANGLE 436
-#define ADXL_READ_COUNT 5
+#define ADXL_READ_COUNT 50
 
 //////////////////////////////// LINEAR SERVO
-#define SERVO_LINEAR_ENGAGED_DEG 82
-#define SERVO_LINEAR_DISENGAGED_DEG 50
+#define SERVO_LINEAR_ENGAGED_DEG 77
+#define SERVO_LINEAR_DISENGAGED_DEG 45
 #define SERVO_LINEAR_STEP 4
 #define SERVO_LINEAR_MS 10
 Servo servoLinearArm;
@@ -540,11 +540,12 @@ int readADXL()
   int total = 0;
   for (readCount = 0; readCount < ADXL_READ_COUNT; ++readCount)
   {
-    total += analogRead(PIN_ADXL);
+    int curr = analogRead(PIN_ADXL);
+    total += curr;
   }
   int yRot = total / ADXL_READ_COUNT;
   // yRot = map(yRot, 0, 1023, 0, 255);
-  // Serial.println(yRot);
+//   Serial.println(yRot);
   return yRot;
 }
 
@@ -1089,6 +1090,9 @@ void setup()
   initADXL();
 
   Serial.println(F("Init Linear Servo"));
+  Serial.print(SERVO_LINEAR_DISENGAGED_DEG);
+  Serial.print(F("--"));
+  Serial.println(SERVO_LINEAR_ENGAGED_DEG);
   servoLinearArm.attach(PIN_SERVO_LINEAR, 530, 2600);
   servoLinearArm.write(SERVO_LINEAR_DISENGAGED_DEG);
   delay(1000);
@@ -1101,7 +1105,7 @@ void setup()
   servoRotateArm.writeMicroseconds(SERVO_IDLE_FREQ);
   delay(1000);
 #ifndef TEST_SERVO
-  servoLinearArm.detach();
+  servoRotateArm.detach();
 #endif
   retrieveRFIDData();
   initBLE();
