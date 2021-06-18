@@ -985,6 +985,9 @@ void bleLoop()
     case RFID_MODE_IDLE:
     default:
     {
+      Serial.println(F("Received bytes"));
+      printBytes(readCard);
+     
       if (isMaster(readCard))
       {
         Serial.println(F("Master card detected! Switch mode to Slave card registration."));
