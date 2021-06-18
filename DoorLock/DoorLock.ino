@@ -29,9 +29,9 @@ bool buttonCoolingDown = false;
 unsigned long buttonLastTime;
 
 //////////////////////////////// MAIN SERVO
-#define SERVO_UNLOCK_FREQ 1800
-#define SERVO_IDLE_FREQ 1500
-#define SERVO_LOCK_FREQ 1200
+int g_SERVO_UNLOCK_FREQ     = 1800;
+int g_SERVO_IDLE_FREQ       = 1500;
+int g_SERVO_LOCK_FREQ       = 1200;
 Servo servoRotateArm;
 
 ///////////////////////// ADXL
@@ -272,11 +272,11 @@ void performSequenceActions()
   case SEQUENCE_START_ACTION:
     if (g_intentState == LOCKED)
     {
-      servoRotateArm.writeMicroseconds(SERVO_LOCK_FREQ);
+      servoRotateArm.writeMicroseconds(g_SERVO_LOCK_FREQ);
     }
     else if (g_intentState == UNLOCKED)
     {
-      servoRotateArm.writeMicroseconds(SERVO_UNLOCK_FREQ);
+      servoRotateArm.writeMicroseconds(g_SERVO_UNLOCK_FREQ);
     }
     g_currSequenceStage = SEQUENCE_ACTION;
     Serial.println(F("SEQUENCE_ACTION"));
@@ -288,7 +288,7 @@ void performSequenceActions()
       int yRot = readADXL();
       Serial.println(yRot);
       Serial.println(F("Main servo action completed. Stopping rotation."));
-      servoRotateArm.writeMicroseconds(SERVO_IDLE_FREQ);
+      servoRotateArm.writeMicroseconds(g_SERVO_IDLE_FREQ);
       g_currSequenceStage = SEQUENCE_DISENGAGE;
       Serial.println(F("SEQUENCE_DISENGAGE"));
       servoLinearArmTarget = SERVO_LINEAR_DISENGAGED_DEG;
@@ -377,6 +377,13 @@ void printBytes(byte toPrint[])
   Serial.println(F(""));
 }
 
+void printSettingsCommand(const String command, const String payload) {
+  Serial.print("SET ");
+  Serial.print(command);
+  Serial.print(" = ");
+  Serial.println(payload);
+}
+
 void bleLoop()
 {
   while (Serial.available())
@@ -394,21 +401,49 @@ void bleLoop()
       // ########## Read payload ##########
       String payload = Serial.readStringUntil(';');
 
-      if (command.equalsIgnoreCase("setting")) {
-        int separatorIndex = payload.indexOf('=');
-        String key = payload.substring(0, separatorIndex);
-        String value = payload.substring(separatorIndex + 1);
-        Serial.print("SET ");
-        Serial.print(key);
-        Serial.print(" = ");
-        Serial.println(value);
-        
+      // settings commands
+      if (command.equals("m_xlk")) {
+        // main servo / unlock frequency
+        printSettingsCommand(command, payload);
       }
-      else if (command.equalsIgnoreCase("data")) {
-        Serial.print("DATA ");
-        Serial.println(payload);
+      else if (command.equals("m_lk")) {
+        // main servo / lock frequency
+        printSettingsCommand(command, payload);
       }
-      else if (command.equalsIgnoreCase("lock")) {
+      else if (command.equals("m_idl")) {
+        // main servo / idle frequency
+        printSettingsCommand(command, payload);
+      }
+      else if (command.equals("l_en")) {
+        // linear servo / engaged angle
+        printSettingsCommand(command, payload);
+      }
+      else if (command.equals("l_xen")) {
+        // linear servo / disengage angle
+        printSettingsCommand(command, payload);
+        break;
+      }
+      else if (command.equals("l_step")) {
+        // linear servo / steps
+        printSettingsCommand(command, payload);
+      }
+      else if (command.equals("l_ms")) {
+        // linear servo / ms
+        printSettingsCommand(command, payload);
+      }
+      else if (command.equals("a_rdct")) {
+        // ADXL read sample count
+        printSettingsCommand(command, payload);
+      }
+      else if (command.equals("a_lk")) {
+        // ADXL / lock angle
+        printSettingsCommand(command, payload);
+      }
+      else if (command.equals("a_xlk")) {
+        // ADXL / unlock angle
+        printSettingsCommand(command, payload);
+      }
+      else if (command.equals("lock")) {
         Serial.print("LOCK ");
         if (payload.equals(SECRET_KEY)) {
           if (g_currSequenceStage == SEQUENCE_IDLE) {
@@ -504,7 +539,7 @@ void setup()
 
   Serial.println(F("Init Main Servo"));
   servoRotateArm.attach(PIN_SERVO_MAIN, 530, 2600);
-  servoRotateArm.writeMicroseconds(SERVO_IDLE_FREQ);
+  servoRotateArm.writeMicroseconds(g_SERVO_IDLE_FREQ);
   delay(1000);
   
   servoRotateArm.detach();
