@@ -20,8 +20,6 @@
 #define PIN_LOCK_BUTTON 3
 #define PIN_SERVO_LINEAR 4 // SG90
 #define PIN_ADXL A0        // GY-61 ADXL335
-#define PIN_BLE_RXD 10
-#define PIN_BLE_TXD 11
 
 ///////////////////////////////// BUTTON
 #define PRESSED_COOLDOWN_MS 2000
@@ -51,13 +49,8 @@ uint16_t servoLinearArmTarget = SERVO_LINEAR_DISENGAGED_DEG;
 uint16_t servoLinearArmCurr = SERVO_LINEAR_DISENGAGED_DEG;
 unsigned long servoLinearLastTime = 0;
 
-///////////////////////// RFID
-#include "secret_defines.h"
-#define BLE_MS 250
-unsigned long bleLastTime = 0;
-
 ///////////////////////// BLE
-SoftwareSerial btSerial(PIN_BLE_RXD, PIN_BLE_TXD); // RX | TX
+#include "secret_defines.h"
 
 ///////////////////////// OLED Display
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
@@ -451,13 +444,6 @@ void loop()
   {
     performSequenceActions();
   }
-}
-
-void initBLE()
-{
-  Serial.println(F("initializing BLE"));
-
-  btSerial.begin(9600);
 }
 
 void initADXL()
