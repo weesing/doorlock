@@ -40,18 +40,9 @@ void bleLoop() {
     else {
       // ########## Read start tag ##########
       String command = Serial.readStringUntil('>');
-
-      Serial.print("<");
-      Serial.print(command);
-      Serial.print("> ");
       
       // ########## Read payload ##########
-      Serial.print("{ ");
-
       String payload = Serial.readStringUntil(';');
-      Serial.print(payload);
-
-      Serial.println(" }");
 
       if (command.equalsIgnoreCase("setting")) {
         int separatorIndex = payload.indexOf('=');
@@ -64,7 +55,17 @@ void bleLoop() {
         
       }
       else if (command.equalsIgnoreCase("data")) {
-        Serial.println("Process data");
+        Serial.print("DATA ");
+        Serial.println(payload);
+      }
+      else if (command.equalsIgnoreCase("lock")) {
+        Serial.print("LOCK ");
+        if (payload.equals(SECRET_KEY)) {
+          Serial.println("Authorized");
+        } else {
+          Serial.print(payload);
+          Serial.println(" <-- Unauthorized");
+        }
       }
     }
   }
@@ -79,6 +80,5 @@ void setup()
   Serial.begin(9600);
   BTSerial.println("U,9600,N");
   BTSerial.begin(9600);  // HC-05 default speed in AT command more
-  Serial.println(SECRET_KEY);
   Serial.println("Waiting for incoming data");
 }
