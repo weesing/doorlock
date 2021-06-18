@@ -419,18 +419,17 @@ void bleLoop()
       }
       else if (command.equalsIgnoreCase("lock")) {
         Serial.print("LOCK ");
-          if (payload.equals(SECRET_KEY)) {
-            if (g_currSequenceStage == SEQUENCE_IDLE) {
-              Serial.println("Authorized");
-            }
-            else {
-              Serial.println("Authorized, but device busy");
-            }
+        if (payload.equals(SECRET_KEY)) {
+          if (g_currSequenceStage == SEQUENCE_IDLE) {
+            Serial.println("Authorized");
           }
           else {
-            Serial.print(payload);
-            Serial.println(" <-- Unauthorized");
+            Serial.println("Authorized, but device busy");
           }
+        }
+        else {
+          Serial.print(payload);
+          Serial.println(" <-- Unauthorized");
         }
       }
     }
