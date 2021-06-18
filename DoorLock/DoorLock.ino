@@ -385,9 +385,7 @@ void bleLoop()
     Serial.readBytes(b, 1);
     char c = (char)(b[0]);
     if (c != '<') {
-      Serial.print("Unknown character received ");
       Serial.print(c);
-      Serial.println("");
     }
     else {
       // ########## Read start tag ##########
@@ -446,6 +444,10 @@ void loop()
   }
 }
 
+void initBLE() {
+  Serial.println("<request_data>");
+}
+
 void initADXL()
 {
   pinMode(PIN_ADXL, INPUT);
@@ -487,6 +489,7 @@ void setup()
 
   pinMode(PIN_LOCK_BUTTON, INPUT);
 
+  initBLE();
   initADXL();
 
   Serial.println(F("Init Linear Servo"));
@@ -506,6 +509,5 @@ void setup()
   
   servoRotateArm.detach();
   
-  initBLE();
   initOLED();
 }
