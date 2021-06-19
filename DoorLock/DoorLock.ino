@@ -405,14 +405,17 @@ void bleLoop()
       if (command.equals("m_xlk")) {
         // main servo / unlock frequency
         printSettingsCommand(command, payload);
+        g_SERVO_UNLOCK_FREQ = payload.toInt();
       }
       else if (command.equals("m_lk")) {
         // main servo / lock frequency
         printSettingsCommand(command, payload);
+        g_SERVO_LOCK_FREQ = payload.toInt();
       }
       else if (command.equals("m_idl")) {
         // main servo / idle frequency
         printSettingsCommand(command, payload);
+        g_SERVO_IDLE_FREQ = payload.toInt();
       }
       else if (command.equals("l_en")) {
         // linear servo / engaged angle
@@ -442,6 +445,9 @@ void bleLoop()
       else if (command.equals("a_xlk")) {
         // ADXL / unlock angle
         printSettingsCommand(command, payload);
+      }
+      else if (command.equals("hb")) {
+        //Serial.println("HB ping");
       }
       else if (command.equals("lock")) {
         Serial.print("LOCK ");
@@ -480,7 +486,9 @@ void loop()
 }
 
 void initBLE() {
-  Serial.println("<request_data>");
+  delay(500);
+  Serial.println("<req_data>");
+  delay(500);
 }
 
 void initADXL()
@@ -523,8 +531,6 @@ void setup()
   Serial.println(F("Serial READY!\n"));
 
   pinMode(PIN_LOCK_BUTTON, INPUT);
-
-  initBLE();
   initADXL();
 
   Serial.println(F("Init Linear Servo"));
@@ -545,4 +551,5 @@ void setup()
   servoRotateArm.detach();
   
   initOLED();
+  initBLE();
 }
