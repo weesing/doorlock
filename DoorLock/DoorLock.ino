@@ -130,69 +130,59 @@ uint32_t g_currKnobAngle = -1;
 
 void applyLockIntent(int intent)
 {
-  Serial.println(F("Applying lock intent"));
+  Serial.println("Apply intent");
   g_intentState = intent;
   if (g_currState == intent)
   {
-    Serial.println(F("Already at current locked state, ignoring intent."));
+    Serial.println("Already at current locked state, ignoring intent.");
     return;
   }
 
   switch (intent)
   {
   case LOCKED:
-    Serial.println(F("LOCKING"));
+    Serial.println("locking");
     g_intentState = LOCKED;
     g_currSequenceStage = SEQUENCE_INIT;
     break;
   case UNLOCKED:
-    Serial.println(F("UNLOCKING"));
+    Serial.println("unlocking");
     g_intentState = UNLOCKED;
     g_currSequenceStage = SEQUENCE_INIT;
     break;
   }
 }
 
-void buttonLoop()
-{
-  if (g_currTime - buttonLastTime < BUTTON_MS)
-  {
+void buttonLoop() {
+  if (g_currTime - buttonLastTime < BUTTON_MS) {
     return;
   }
 
-  if (g_currSequenceStage != SEQUENCE_IDLE)
-  {
+  if (g_currSequenceStage != SEQUENCE_IDLE) {
     return;
   }
 
   buttonLastTime = g_currTime;
-  if (buttonCoolingDown)
-  {
-    if (g_currTime - pressedCooldownLastTime > PRESSED_COOLDOWN_MS)
-    {
-      Serial.println(F("Cooldown expired, activated"));
+  if (buttonCoolingDown) {
+    if (g_currTime - pressedCooldownLastTime > PRESSED_COOLDOWN_MS) {
+      Serial.println("Btn cooldown expired");
       buttonCoolingDown = false;
     }
-    else
-    {
+    else {
       return;
     }
   }
-  else
-  {
+  else {
     int btnPressed = digitalRead(PIN_LOCK_BUTTON);
-    if (btnPressed == HIGH)
-    {
+    if (btnPressed == HIGH) {
       buttonCoolingDown = true;
       pressedCooldownLastTime = g_currTime;
-      if (g_currState == LOCKED)
-      {
-        Serial.println(F("Button pressed, processing UNLOCK"));
+      if (g_currState == LOCKED) {
+        Serial.println("Btn unlock");
         applyLockIntent(UNLOCKED);
       }
-      else
-      {
-        Serial.println(F("Button pressed, processing LOCK"));
+      else {
+        Serial.println("Btn lock");
         applyLockIntent(LOCKED);
       }
     }
@@ -201,31 +191,25 @@ void buttonLoop()
 
 bool moveLinearServo()
 {
-  if (g_currTime - servoLinearLastTime < SERVO_LINEAR_MS)
-  {
+  if (g_currTime - servoLinearLastTime < SERVO_LINEAR_MS) {
     return false;
   }
+  
   servoLinearLastTime = g_currTime;
-  if (servoLinearArmCurr < servoLinearArmTarget)
-  {
-    if (servoLinearArmTarget - servoLinearArmCurr <= SERVO_LINEAR_STEP)
-    {
+  if (servoLinearArmCurr < servoLinearArmTarget) {
+    if (servoLinearArmTarget - servoLinearArmCurr <= SERVO_LINEAR_STEP) {
       servoLinearArmCurr = servoLinearArmTarget;
     }
-    else
-    {
+    else {
       servoLinearArmCurr += SERVO_LINEAR_STEP;
     }
     servoLinearArm.write(servoLinearArmCurr);
   }
-  else
-  {
-    if (servoLinearArmCurr - servoLinearArmTarget <= SERVO_LINEAR_STEP)
-    {
+  else {
+    if (servoLinearArmCurr - servoLinearArmTarget <= SERVO_LINEAR_STEP) {
       servoLinearArmCurr = servoLinearArmTarget;
     }
-    else
-    {
+    else {
       servoLinearArmCurr -= SERVO_LINEAR_STEP;
     }
     servoLinearArm.write(servoLinearArmCurr);
@@ -238,8 +222,7 @@ int readADXL()
   analogReference(EXTERNAL);
   uint8_t readCount = 0;
   int total = 0;
-  for (readCount = 0; readCount < ADXL_READ_COUNT; ++readCount)
-  {
+  for (readCount = 0; readCount < ADXL_READ_COUNT; ++readCount) {
     int curr = analogRead(PIN_ADXL);
     total += curr;
   }
@@ -260,37 +243,31 @@ void performSequenceActions()
     g_currSequenceStage = SEQUENCE_ENGAGE; // go to next stage immediately on next loop.
     servoLinearArm.attach(PIN_SERVO_LINEAR, 530, 2600);
     servoRotateArm.attach(PIN_SERVO_MAIN, 530, 2600);
-    Serial.println(F("SEQUENCE_ENGAGE"));
+    Serial.println("ENGAGE");
     break;
   case SEQUENCE_ENGAGE:
     if (moveLinearServo())
     {
       g_currSequenceStage = SEQUENCE_START_ACTION;
-      Serial.println(F("SEQUENCE_START_ACTION"));
+      Serial.println("START_ACTION");
     }
     break;
   case SEQUENCE_START_ACTION:
-    if (g_intentState == LOCKED)
-    {
+    if (g_intentState == LOCKED) {
       servoRotateArm.writeMicroseconds(g_SERVO_LOCK_FREQ);
     }
-    else if (g_intentState == UNLOCKED)
-    {
+    else if (g_intentState == UNLOCKED) {
       servoRotateArm.writeMicroseconds(g_SERVO_UNLOCK_FREQ);
     }
     g_currSequenceStage = SEQUENCE_ACTION;
-    Serial.println(F("SEQUENCE_ACTION"));
-    Serial.println(F("Waiting for action to complete."));
+    Serial.println("ACTION");
     break;
   case SEQUENCE_ACTION:
-    if (g_currState == g_intentState)
-    {
-      int yRot = readADXL();
-      Serial.println(yRot);
-      Serial.println(F("Main servo action completed. Stopping rotation."));
+    if (g_currState == g_intentState) {
+      Serial.println("Target state reached");
       servoRotateArm.writeMicroseconds(g_SERVO_IDLE_FREQ);
       g_currSequenceStage = SEQUENCE_DISENGAGE;
-      Serial.println(F("SEQUENCE_DISENGAGE"));
+      Serial.println("DISENGAGE");
       servoLinearArmTarget = SERVO_LINEAR_DISENGAGED_DEG;
     }
     break;
@@ -298,14 +275,14 @@ void performSequenceActions()
     if (moveLinearServo())
     {
       g_currSequenceStage = SEQUENCE_END;
-      Serial.println(F("SEQUENCE_END"));
+      Serial.println("END");
       servoLinearArm.detach();
       servoRotateArm.detach();
     }
     break;
   case SEQUENCE_END:
     g_currSequenceStage = SEQUENCE_IDLE;
-    Serial.println(F("SEQUENCE_IDLE"));
+    Serial.println("IDLE");
     break;
   }
 }
@@ -374,7 +351,7 @@ void printBytes(byte toPrint[])
   {
     Serial.print(toPrint[i], HEX);
   }
-  Serial.println(F(""));
+  Serial.println("");
 }
 
 void printSettingsCommand(const String command, const String payload) {
@@ -454,14 +431,23 @@ void bleLoop()
         if (payload.equals(SECRET_KEY)) {
           if (g_currSequenceStage == SEQUENCE_IDLE) {
             Serial.println("Authorized");
+            // Toggle the lock
+            if (g_currState == LOCKED)
+            {
+              applyLockIntent(UNLOCKED);
+            }
+            else
+            {
+              applyLockIntent(LOCKED);
+            }
           }
           else {
-            Serial.println("Authorized, but device busy");
+            Serial.println("Device busy");
           }
         }
         else {
           Serial.print(payload);
-          Serial.println(" <-- Unauthorized");
+          Serial.println(" Unauthorized");
         }
       }
     }
@@ -475,17 +461,16 @@ void loop()
   bleLoop();
   reconcileLockState();
   reconcileOLEDDisplay();
-  if (g_currSequenceStage == SEQUENCE_IDLE)
-  {
+  if (g_currSequenceStage == SEQUENCE_IDLE) {
     buttonLoop();
   }
-  else
-  {
+  else {
     performSequenceActions();
   }
 }
 
-void initBLE() {
+void requestSettings() {
+  Serial.println("Init BLE");
   delay(500);
   Serial.println("<req_data>");
   delay(500);
@@ -493,28 +478,30 @@ void initBLE() {
 
 void initADXL()
 {
+  Serial.println("Init ADXL");
   pinMode(PIN_ADXL, INPUT);
-  int knobAngle = readADXL();
-  if (knobAngle >= LOCKED_MIN_ANGLE)
+  g_currKnobAngle = readADXL();
+  if (g_currKnobAngle >= LOCKED_MIN_ANGLE)
   {
     g_currState = LOCKED;
     g_intentState = LOCKED;
-    Serial.println(F("Initial state: LOCKED"));
+    Serial.println("curr-LOCKED");
   }
   else
   {
     g_currState = UNLOCKED;
     g_intentState = UNLOCKED;
-    Serial.println(F("Intial state: UNLOCKED"));
+    Serial.println("curr-UNLOCKED");
   }
 }
 
 void initOLED()
 {
+  Serial.println("Init OLED");
   // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
   if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C))
   { // Address 0x3C for 128x32
-    Serial.println(F("SSD1306 allocation failed"));
+    Serial.println("SSD1306 allocation failed");
   }
 }
 
@@ -524,26 +511,22 @@ void setup()
   Wire.begin();
 
   Serial.begin(9600);
-  while (!Serial)
-  {
-    Serial.println(F("I2C Scanner"));
-  }
-  Serial.println(F("Serial READY!\n"));
+  while (!Serial) { }
+  Serial.println("Ser READY!");
 
+  delay(100);
   pinMode(PIN_LOCK_BUTTON, INPUT);
   initADXL();
+  delay(100);
 
-  Serial.println(F("Init Linear Servo"));
-  Serial.print(SERVO_LINEAR_DISENGAGED_DEG);
-  Serial.print(F("--"));
-  Serial.println(SERVO_LINEAR_ENGAGED_DEG);
+  Serial.println("Init LServo");
   servoLinearArm.attach(PIN_SERVO_LINEAR, 530, 2600);
   servoLinearArm.write(SERVO_LINEAR_DISENGAGED_DEG);
   delay(1000);
   
   servoLinearArm.detach();
 
-  Serial.println(F("Init Main Servo"));
+  Serial.println("Init MServo");
   servoRotateArm.attach(PIN_SERVO_MAIN, 530, 2600);
   servoRotateArm.writeMicroseconds(g_SERVO_IDLE_FREQ);
   delay(1000);
@@ -551,5 +534,7 @@ void setup()
   servoRotateArm.detach();
   
   initOLED();
-  initBLE();
+
+  delay(100);
+  requestSettings();
 }
