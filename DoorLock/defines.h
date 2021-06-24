@@ -25,18 +25,18 @@ int gServoCurrFreq          = g_SERVO_IDLE_FREQ;
 Servo servoRotateArm;
 
 ///////////////////////// ADXL
-#define LOCKED_MIN_ANGLE 580
-#define UNLOCKED_MAX_ANGLE 436
-#define ADXL_READ_COUNT 50
+int g_LOCKED_MIN_ANGLE      = 580;
+int g_UNLOCKED_MAX_ANGLE    = 436;
+int g_ADXL_READ_COUNT       = 50;
 
 //////////////////////////////// LINEAR SERVO
-#define SERVO_LINEAR_ENGAGED_DEG 77
-#define SERVO_LINEAR_DISENGAGED_DEG 45
-#define SERVO_LINEAR_STEP 4
-#define SERVO_LINEAR_MS 10
+int g_SERVO_LINEAR_ENGAGED_DEG      = 77;
+int g_SERVO_LINEAR_DISENGAGED_DEG   = 45;
+int g_SERVO_LINEAR_STEP             = 4;
+int g_SERVO_LINEAR_MS               = 10;
 Servo servoLinearArm;
-uint16_t servoLinearArmTarget = SERVO_LINEAR_DISENGAGED_DEG;
-uint16_t servoLinearArmCurr = SERVO_LINEAR_DISENGAGED_DEG;
+uint16_t servoLinearArmTarget       = g_SERVO_LINEAR_DISENGAGED_DEG;
+uint16_t servoLinearArmCurr         = g_SERVO_LINEAR_DISENGAGED_DEG;
 unsigned long servoLinearLastTime = 0;
 
 ///////////////////////// BLE

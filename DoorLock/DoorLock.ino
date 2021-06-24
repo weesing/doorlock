@@ -72,26 +72,26 @@ void buttonLoop() {
 
 bool moveLinearServo()
 {
-  if (g_currTime - servoLinearLastTime < SERVO_LINEAR_MS) {
+  if (g_currTime - servoLinearLastTime < g_SERVO_LINEAR_MS) {
     return false;
   }
   
   servoLinearLastTime = g_currTime;
   if (servoLinearArmCurr < servoLinearArmTarget) {
-    if (servoLinearArmTarget - servoLinearArmCurr <= SERVO_LINEAR_STEP) {
+    if (servoLinearArmTarget - servoLinearArmCurr <= g_SERVO_LINEAR_STEP) {
       servoLinearArmCurr = servoLinearArmTarget;
     }
     else {
-      servoLinearArmCurr += SERVO_LINEAR_STEP;
+      servoLinearArmCurr += g_SERVO_LINEAR_STEP;
     }
     servoLinearArm.write(servoLinearArmCurr);
   }
   else {
-    if (servoLinearArmCurr - servoLinearArmTarget <= SERVO_LINEAR_STEP) {
+    if (servoLinearArmCurr - servoLinearArmTarget <= g_SERVO_LINEAR_STEP) {
       servoLinearArmCurr = servoLinearArmTarget;
     }
     else {
-      servoLinearArmCurr -= SERVO_LINEAR_STEP;
+      servoLinearArmCurr -= g_SERVO_LINEAR_STEP;
     }
     servoLinearArm.write(servoLinearArmCurr);
   }
@@ -103,11 +103,11 @@ int readADXL()
   analogReference(EXTERNAL);
   uint8_t readCount = 0;
   int total = 0;
-  for (readCount = 0; readCount < ADXL_READ_COUNT; ++readCount) {
+  for (readCount = 0; readCount < g_ADXL_READ_COUNT; ++readCount) {
     int curr = analogRead(PIN_ADXL);
     total += curr;
   }
-  return total / ADXL_READ_COUNT;
+  return total / g_ADXL_READ_COUNT;
 }
 
 void performSequenceActions()
@@ -117,7 +117,7 @@ void performSequenceActions()
   case SEQUENCE_IDLE:
     break;
   case SEQUENCE_INIT:
-    servoLinearArmTarget = SERVO_LINEAR_ENGAGED_DEG;
+    servoLinearArmTarget = g_SERVO_LINEAR_ENGAGED_DEG;
     g_currSeqStage = SEQUENCE_ENGAGE; // go to next stage immediately on next loop.
     servoLinearArm.attach(PIN_SERVO_LINEAR, 530, 2600);
     servoRotateArm.attach(PIN_SERVO_MAIN, 530, 2600);
@@ -148,7 +148,7 @@ void performSequenceActions()
       servoRotateArm.writeMicroseconds(g_SERVO_IDLE_FREQ);
       g_currSeqStage = SEQUENCE_DISENGAGE;
       Serial.println(F("DISENGAGE"));
-      servoLinearArmTarget = SERVO_LINEAR_DISENGAGED_DEG;
+      servoLinearArmTarget = g_SERVO_LINEAR_DISENGAGED_DEG;
     }
     break;
   case SEQUENCE_DISENGAGE:
@@ -171,12 +171,12 @@ void reconcileLockState()
 {
   int yRot = readADXL();
   g_currKnobAngle = yRot;
-  if (g_currState == UNLOCKED && g_currKnobAngle >= LOCKED_MIN_ANGLE)
+  if (g_currState == UNLOCKED && g_currKnobAngle >= g_LOCKED_MIN_ANGLE)
   {
     Serial.println(F("CHG_LCK"));
     g_currState = LOCKED;
   }
-  else if (g_currState == LOCKED && g_currKnobAngle <= UNLOCKED_MAX_ANGLE)
+  else if (g_currState == LOCKED && g_currKnobAngle <= g_UNLOCKED_MAX_ANGLE)
   {
     Serial.println(F("CHG_XLCK"));
     g_currState = UNLOCKED;
@@ -185,21 +185,36 @@ void reconcileLockState()
 
 void reconcileOLEDDisplay()
 {
-  int logoX = 15;
+  int logoX = 8;
   int logoY = 15;
   int textX = 28;
+  int textY = logoY - 5;
+  int locX = 0;
+  int locY = logoY - (ICON_BMP_HEIGHT / 2);
 
   display.clearDisplay();
 
   display.setTextSize(1);
   display.setTextColor(WHITE);
-
+  
   unsigned char *bmp;
   String lockStateString;
-  int locX = (logoX - ICON_BMP_WIDTH) / 2;
-  int locY = (logoY - ICON_BMP_HEIGHT) / 2;
+    
+  if (g_DEBUG_DISPLAY != 0) {
+    locX = logoX - (ICON_BMP_WIDTH / 2);
+  } else {
+    locX = (SCREEN_WIDTH / 2) - (ICON_BMP_WIDTH / 2);
+    locY += 4;
+    textX = 20;
+    textY = locY + 38;
+  }
+
   if (g_currState == LOCKED)
   {
+    if (g_DEBUG_DISPLAY == 0) {
+      display.drawCircle(SCREEN_WIDTH / 2 - 1, logoY + 6, ICON_BMP_WIDTH, SSD1306_WHITE);
+      textX = 32;
+    }
     display.drawBitmap(
         locX,
         locY,
@@ -215,20 +230,20 @@ void reconcileOLEDDisplay()
     lockStateString = "Unlocked";
   }
   display.setTextSize(2);
-  display.setCursor(textX, logoY - 11);
+  display.setCursor(textX, textY);
   display.println(lockStateString);
 
   if (g_DEBUG_DISPLAY != 0) {
     int yRot = readADXL();
     display.setTextSize(1);
-    display.setCursor(0, 25);
+    display.setCursor(0, logoY + 14);
     display.print(F("States "));
     display.print(g_currState);
     display.print(F(" - "));
     display.println(g_intentState);
     display.print(F("Stage "));
-    display.println(g_currSeqStage);
-    display.print(F("Knob "));
+    display.print(g_currSeqStage);
+    display.print(F("  Knob "));
     display.println(g_currKnobAngle);
     display.print(F("Linear "));
     display.print(servoLinearArmCurr);
@@ -264,30 +279,32 @@ void sendValue(String key, String args) {
     Serial.println(g_SERVO_IDLE_FREQ);
   }
   else if (key == "l_en") {
-    Serial.println(SERVO_LINEAR_ENGAGED_DEG);
+    Serial.println(g_SERVO_LINEAR_ENGAGED_DEG);
   }
   else if (key == "l_xen") {
-    Serial.println(SERVO_LINEAR_DISENGAGED_DEG);
+    Serial.println(g_SERVO_LINEAR_DISENGAGED_DEG);
   }
   else if (key == "l_step") {
-    Serial.println(SERVO_LINEAR_STEP);
+    Serial.println(g_SERVO_LINEAR_STEP);
   }
   else if (key == "l_ms") {
-    Serial.println(SERVO_LINEAR_MS);
+    Serial.println(g_SERVO_LINEAR_MS);
   }
   else if (key == "a_rdct") {
-    Serial.println(ADXL_READ_COUNT);
+    Serial.println(g_ADXL_READ_COUNT);
   }
   else if (key == "a_lk") {
-    Serial.println(LOCKED_MIN_ANGLE);
+    Serial.println(g_LOCKED_MIN_ANGLE);
   }
   else if (key == "a_xlk") {
-    Serial.println(UNLOCKED_MAX_ANGLE);
+    Serial.println(g_UNLOCKED_MAX_ANGLE);
   }
   else if (key == "o_dbg") {
     Serial.println(g_DEBUG_DISPLAY);
   }
 }
+
+void(* rebootFunc)(void) = 0; //reboot function @ address 0
 
 void bleLoop()
 {
@@ -329,35 +346,44 @@ void bleLoop()
       else if (command.equals("l_en")) {
         // linear servo / engaged angle
         printSettingsCommand(command, payload);
+        g_SERVO_LINEAR_ENGAGED_DEG = payload.toInt();
       }
       else if (command.equals("l_xen")) {
         // linear servo / disengage angle
         printSettingsCommand(command, payload);
-        break;
+        g_SERVO_LINEAR_DISENGAGED_DEG = payload.toInt();
       }
       else if (command.equals("l_step")) {
         // linear servo / steps
         printSettingsCommand(command, payload);
+        g_SERVO_LINEAR_STEP = payload.toInt();
       }
       else if (command.equals("l_ms")) {
         // linear servo / ms
         printSettingsCommand(command, payload);
+        g_SERVO_LINEAR_MS = payload.toInt();
       }
       else if (command.equals("a_rdct")) {
         // ADXL read sample count
         printSettingsCommand(command, payload);
+        g_ADXL_READ_COUNT = payload.toInt();
       }
       else if (command.equals("a_lk")) {
         // ADXL / lock angle
         printSettingsCommand(command, payload);
+        g_LOCKED_MIN_ANGLE = payload.toInt();
       }
       else if (command.equals("a_xlk")) {
         // ADXL / unlock angle
         printSettingsCommand(command, payload);
+        g_UNLOCKED_MAX_ANGLE = payload.toInt();
       }
       else if (command.equals("o_dbg")) {
         printSettingsCommand(command, payload);
         g_DEBUG_DISPLAY = payload.toInt();
+      }
+      else if (command.equals("reboot")) {
+        rebootFunc();
       }
       else if (command.equals("hb")) {
 //        Serial.println(F("HB ping"));
@@ -417,7 +443,7 @@ void initADXL()
   Serial.println(F("Init ADXL"));
   pinMode(PIN_ADXL, INPUT);
   g_currKnobAngle = readADXL();
-  if (g_currKnobAngle >= LOCKED_MIN_ANGLE)
+  if (g_currKnobAngle >= g_LOCKED_MIN_ANGLE)
   {
     g_currState = LOCKED;
     g_intentState = LOCKED;
@@ -432,7 +458,8 @@ void initADXL()
 }
 
 void initOLED()
-{  
+{
+  Serial.println(F("Init OLED"));
   // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
   if(!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
     Serial.println(F("SSD1306 allocation failed"));
@@ -446,6 +473,17 @@ void initOLED()
   // drawing commands to make them visible on screen!
   display.display();
   delay(2000);
+    
+  display.clearDisplay();
+
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(0, 0);
+  display.println(F("Initializing..."));
+
+  display.dim(false);
+
+  display.display();
   
   Serial.println(F("OLED init"));
 }
@@ -458,17 +496,6 @@ void setup()
   
   while (!Serial) { }
   Serial.println(F("Ser READY!"));
-    
-  display.clearDisplay();
-
-  display.setTextSize(1);
-  display.setTextColor(WHITE);
-  display.setCursor(0, 0);
-  display.println(F("Initializing..."));
-
-  display.dim(false);
-
-  display.display();
 
   delay(100);
   pinMode(PIN_LOCK_BUTTON, INPUT);
@@ -477,7 +504,7 @@ void setup()
 
   Serial.println(F("Init LServo"));
   servoLinearArm.attach(PIN_SERVO_LINEAR, 530, 2600);
-  servoLinearArm.write(SERVO_LINEAR_DISENGAGED_DEG);
+  servoLinearArm.write(g_SERVO_LINEAR_DISENGAGED_DEG);
   delay(1000);
   
   servoLinearArm.detach();
