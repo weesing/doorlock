@@ -27,7 +27,8 @@ Servo servoRotateArm;
 ///////////////////////// ADXL
 int g_LOCKED_MIN_ANGLE      = 580;
 int g_UNLOCKED_MAX_ANGLE    = 436;
-int g_ADXL_READ_COUNT       = 50;
+int g_ADXL_READ_COUNT = 50;
+uint32_t g_currKnobAngle = -1;
 
 //////////////////////////////// LINEAR SERVO
 int g_SERVO_LINEAR_ENGAGED_DEG      = 77;
@@ -117,4 +118,3 @@ int8_t g_currSeqStage = SEQUENCE_IDLE;
 
 uint8_t g_currState = UNKNOWN;
 uint8_t g_intentState = UNKNOWN;
-uint32_t g_currKnobAngle = -1;
