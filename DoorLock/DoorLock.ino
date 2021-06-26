@@ -175,11 +175,13 @@ void reconcileLockState()
   {
     Serial.println(F("CHG_LCK"));
     g_currState = LOCKED;
+    servoRotateArm.writeMicroseconds(g_SERVO_IDLE_FREQ);
   }
   else if (g_currState == LOCKED && g_currKnobAngle <= g_UNLOCKED_MAX_ANGLE)
   {
     Serial.println(F("CHG_XLCK"));
     g_currState = UNLOCKED;
+    servoRotateArm.writeMicroseconds(g_SERVO_IDLE_FREQ);
   }
 }
 
