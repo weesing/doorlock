@@ -422,15 +422,17 @@ void bleLoop()
 void loop()
 {
   g_currTime = millis();
-  bleLoop();
+  
   reconcileLockState();
-  reconcileOLEDDisplay();
   if (g_currSeqStage == SEQUENCE_IDLE) {
     buttonLoop();
   }
   else {
     performSequenceActions();
   }
+  
+  bleLoop();
+  reconcileOLEDDisplay();
 }
 
 void requestSettings() {
