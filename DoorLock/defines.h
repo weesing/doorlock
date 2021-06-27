@@ -21,6 +21,7 @@ unsigned long buttonLastTime;
 int g_SERVO_UNLOCK_FREQ     = 1800;
 int g_SERVO_IDLE_FREQ       = 1500;
 int g_SERVO_LOCK_FREQ       = 1200;
+int g_SERVO_END_DELAY       = 200;
 int gServoCurrFreq          = g_SERVO_IDLE_FREQ;
 Servo servoRotateArm;
 
@@ -35,6 +36,7 @@ int g_SERVO_LINEAR_ENGAGED_DEG      = 77;
 int g_SERVO_LINEAR_DISENGAGED_DEG   = 45;
 int g_SERVO_LINEAR_STEP             = 4;
 int g_SERVO_LINEAR_MS               = 10;
+int g_SERVO_LINEAR_END_DELAY        = 1000;
 Servo servoLinearArm;
 uint16_t servoLinearArmTarget       = g_SERVO_LINEAR_DISENGAGED_DEG;
 uint16_t servoLinearArmCurr         = g_SERVO_LINEAR_DISENGAGED_DEG;

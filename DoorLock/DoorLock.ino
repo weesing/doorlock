@@ -149,6 +149,8 @@ void performSequenceActions()
       g_currSeqStage = SEQUENCE_DISENGAGE;
       Serial.println(F("DISENGAGE"));
       servoLinearArmTarget = g_SERVO_LINEAR_DISENGAGED_DEG;
+      // delay to let linear arm have more current
+      delay(g_SERVO_END_DELAY);
     }
     break;
   case SEQUENCE_DISENGAGE:
@@ -156,6 +158,8 @@ void performSequenceActions()
     {
       g_currSeqStage = SEQUENCE_END;
       Serial.println(F("END"));
+      // delay a bit to let linear arm settle.
+      delay(g_SERVO_LINEAR_END_DELAY);
       servoLinearArm.detach();
       servoRotateArm.detach();
     }
@@ -280,6 +284,9 @@ void sendValue(String key, String args) {
   else if (key.equals("m_idl")) {
     Serial.println(g_SERVO_IDLE_FREQ);
   }
+  else if (key.equals("m_edel")) {
+    Serial.println(g_SERVO_END_DELAY);
+  }
   else if (key == "l_en") {
     Serial.println(g_SERVO_LINEAR_ENGAGED_DEG);
   }
@@ -291,6 +298,9 @@ void sendValue(String key, String args) {
   }
   else if (key == "l_ms") {
     Serial.println(g_SERVO_LINEAR_MS);
+  }
+  else if (key == "l_edel") {
+    Serial.println(g_SERVO_LINEAR_END_DELAY);
   }
   else if (key == "a_rdct") {
     Serial.println(g_ADXL_READ_COUNT);
@@ -345,6 +355,10 @@ void bleLoop()
         printSettingsCommand(command, payload);
         g_SERVO_IDLE_FREQ = payload.toInt();
       }
+      else if (command.equals("m_edel")) {
+        printSettingsCommand(command, payload);
+        g_SERVO_END_DELAY = payload.toInt();
+      }
       else if (command.equals("l_en")) {
         // linear servo / engaged angle
         printSettingsCommand(command, payload);
@@ -364,6 +378,10 @@ void bleLoop()
         // linear servo / ms
         printSettingsCommand(command, payload);
         g_SERVO_LINEAR_MS = payload.toInt();
+      }
+      else if (command.equals("l_edel")) {
+        printSettingsCommand(command, payload);
+        g_SERVO_LINEAR_END_DELAY = payload.toInt();
       }
       else if (command.equals("a_rdct")) {
         // ADXL read sample count
