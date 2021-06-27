@@ -1,1 +1,3 @@
 .vscode
+DoorLock/secret_defines.h
+BLEConfigure/secret_defines.h
