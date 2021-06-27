@@ -146,6 +146,8 @@ void performSequenceActions()
     if (g_currState == g_intentState) {
       gServoCurrFreq = g_SERVO_IDLE_FREQ;
       servoRotateArm.writeMicroseconds(g_SERVO_IDLE_FREQ);
+      delay(100);
+      servoRotateArm.detach();
       g_currSeqStage = SEQUENCE_DISENGAGE;
       Serial.println(F("DISENGAGE"));
       servoLinearArmTarget = g_SERVO_LINEAR_DISENGAGED_DEG;
@@ -161,7 +163,6 @@ void performSequenceActions()
       // delay a bit to let linear arm settle.
       delay(g_SERVO_LINEAR_END_DELAY);
       servoLinearArm.detach();
-      servoRotateArm.detach();
     }
     break;
   case SEQUENCE_END:
