@@ -1,12 +1,13 @@
 # Introduction
-This project contains the main module program for the Door Lock. Other components can be found in other Git repositories.
+This project contains the Arduino Lock module program for the Door Lock.
+![alt text](.\communication.jpg)
 | Git Repository | Module |
 |--|--|
 | https://github.com/weesing/doorlock | This repository.
 | https://github.com/weesing/doorlock_rpi | NodeJS API Server connected with main module to control different aspects of the main module, can be executed on Raspberry Pi.
 | https://github.com/weesing/doorlock_rfid | RFID module for scanning RFID tags.
 
-- The other auxiliary server and module components are used for complementing the main module.
+- The API server and module components are used for complementing the main module.
 - This module should be able to function without the need for other modules.
 - All aforementioned modules communicate by means of BLE.
 > Note: This means if you want to construct all related modules, the Arduino used must have a BLE module or a BLE-Nano.
