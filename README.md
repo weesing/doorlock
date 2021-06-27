@@ -11,6 +11,9 @@ This project contains the main module program for the Door Lock. Other component
 - All aforementioned modules communicate by means of BLE.
 > Note: This means if you want to construct all related modules, the Arduino used must have a BLE module or a BLE-Nano.
 
+## Example Implementation
+https://www.reddit.com/r/arduino/comments/o8vpap/have_been_a_lurker_in_this_sub_for_a_long_time/
+
 # Required Arduino libraries
 - `Adafruit GFX`
 - `Adafruit SSD1306`
