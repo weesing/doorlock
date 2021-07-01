@@ -418,10 +418,12 @@ void bleLoop()
             if (g_currState == LOCKED)
             {
               applyLockIntent(UNLOCKED);
+              Serial.println("<status>0");
             }
             else
             {
               applyLockIntent(LOCKED);
+              Serial.println("<status>1");
             }
           }
           else {
@@ -431,6 +433,14 @@ void bleLoop()
         else {
           Serial.print(payload);
           Serial.println(F("Unauthorized"));
+        }
+      }
+      else if (command.equals("status")) {
+        if (g_currState == LOCKED) {
+          Serial.println("<status>1");
+        }
+        else {
+          Serial.println("<status>0");
         }
       }
     }
